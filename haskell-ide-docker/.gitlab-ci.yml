@@ -1,0 +1,18 @@
+image: registry.gitlab.com/someone9999/haskell-ide-docker:latest
+
+stages:
+    - build
+
+build:
+    stage: build
+    script: 
+        - pwd
+        - cd app/quoteserver
+        - pwd
+        - stack build --no-terminal
+    cache:
+        paths:
+            - app/quoteserver/.stack-work
+    artifacts:
+        paths:
+            - app/quoteserver/.stack-work/dist
