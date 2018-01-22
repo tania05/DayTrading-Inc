@@ -21,7 +21,8 @@ RUN curl -o /tmp/go.tar.gz https://dl.google.com/go/go1.9.2.linux-amd64.tar.gz \
 
 
 RUN mkdir go
-ENV GOPATH="/go"
+ENV GOPATH="/go:/app"
+ENV GOBIN="/go/bin"
 ENV PATH="$PATH:$GOPATH/bin:/usr/local/go/bin"
 
 # vim-plug
