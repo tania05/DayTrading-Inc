@@ -84,12 +84,6 @@ func PostDumpLogHandler(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusCreated)
 }
 
-type SampleSummaryResult struct{
-  totalBuys int
-  totalSells int
-  userId string
-}
-
 func GetDisplaySummaryHandler(w http.ResponseWriter, r *http.Request) {
   urlVars := mux.Vars(r)
 
@@ -99,7 +93,10 @@ func GetDisplaySummaryHandler(w http.ResponseWriter, r *http.Request) {
     "user_id": urlVars["userId"],
   }
 
-  bytes, _ := json.Marshal(ret) //TODO, we should be checking the error, but ehh... its fine, probably
+  bytes, err := json.Marshal(ret) //TODO, we should be checking the error, but ehh... its fine, probably
+  if(err != nil){
+    panic(err)
+  }
   w.Header().Set("Content-Type", "application/json")
   w.WriteHeader(http.StatusOK)
   w.Write(bytes)
