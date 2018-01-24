@@ -5,7 +5,6 @@ compile:webserver:
   image: golang:1.9.3
   stage: build
   script:
-    - mkdir -p $GOPATH/src/webserver
     - ln -svf $CI_PROJECT_DIR/webserver $GOPATH/src
     - cd $GOPATH/src/webserver
     - go build -race -ldflags "-extldflags '-static'" -o $CI_PROJECT_DIR/out/webserver
