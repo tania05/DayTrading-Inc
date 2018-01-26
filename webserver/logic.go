@@ -29,6 +29,13 @@ func getQuote(user string) string {
 	return string(buff)
 }
 
+func sell(userid string, stockSymbol string, amount int ){
+	
+}
+
+
+
+
 func main() {
 
 	c := getQuote("TST,user")
