@@ -4,6 +4,7 @@ import (
 	"net"
 	"log"
 	"fmt"
+	"io/ioutil"
 	"strconv"
 	"webserver/internal/database"
 	"webserver/internal/money"
@@ -29,9 +30,8 @@ func getQuote(user string, stock string) money.Money {
 	conn.Write([]byte(stock +","+user))
 	conn.Write([]byte("\n"))
 
-	buff := make([]byte, 1024)
-	n, _ := conn.Read(buff)
-	log.Printf("Recieve: %s", buff[:n])
+	buff, _ := ioutil.ReadAll(conn)
+	log.Printf("Recieve: %s", buff)
 	val, err := strconv.Atoi(strings.Replace(strings.Split(string(buff),",")[0],".","",-1))
 	fmt.Println(val)
 	return money.Money(val)

@@ -50,7 +50,6 @@ handleConnection' :: Handle -> IO ()
 handleConnection' conn = do
   command <- hGetLine conn >>= \c -> return $ parseCommand c
   giveResponse conn command
-  handleConnection' conn
 
 parseCommand :: String -> Maybe Command
 parseCommand [] = Nothing

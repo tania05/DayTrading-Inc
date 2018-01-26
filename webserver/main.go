@@ -144,7 +144,7 @@ func main() {
 
   addFunds("adad", 55000)
   fmt.Println(database.CheckFunds("adad"))
-  transact(1, "adad", 50, "TTT")
+  transact(1, "adad", 55000, "TTT")
   commitTransact(1, "adad")
   fmt.Println(database.CheckFunds("adad"))
   fmt.Println(database.CheckStock("adad","TTT"))
