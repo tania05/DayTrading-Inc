@@ -7,6 +7,7 @@ import Control.Monad (replicateM)
 import Data.Char as C
 import Data.Maybe
 import Data.Time.Clock (getCurrentTime)
+import Data.Time.Clock.POSIX
 import Data.Time.Format (defaultTimeLocale, formatTime, iso8601DateFormat)
 import Data.List (intercalate)
 import GHC.IO.Handle
@@ -58,7 +59,7 @@ parseCommand command =
   where
     parsePart :: String -> String -> Maybe Command
     parsePart rawSym rawUserId
-      | length sym /= 3 = Nothing
+      | length sym > 3 = Nothing
       | any (not . C.isPrint) sym = Nothing
       | any (not . C.isPrint) userId = Nothing
       | otherwise = Just $ QuoteCommand sym userId
@@ -82,9 +83,8 @@ giveResponse handle (Just (QuoteCommand sym userid)) = do
       return $ printf "%d.%02d" (num `quot` 100) (num `mod` 100)
     timestampIO :: IO String
     timestampIO = do
-      time <- getCurrentTime
-      return $
-        formatTime defaultTimeLocale (iso8601DateFormat $ Just "%H:%M:%S") time
+      time <- getPOSIXTime
+      return $ show $ round (time * 1000)
     cryptokeyIO :: IO String
     cryptokeyIO =
       replicateM 25 $ fmap (\x -> chr $ x + 97) (getStdRandom $ randomR (0, 25))
