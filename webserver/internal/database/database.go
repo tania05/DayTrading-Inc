@@ -1,8 +1,9 @@
 package database
 
 import (
-	"errors"
 	"webserver/internal/money"
+  "webserver/internal/logger"
+  "time"
 )
 
 type Holding interface {
@@ -52,7 +53,14 @@ func (hold StockHolding) pay() error {
 
 	beforeStockAmount := stockMap[hold.UserId][hold.StockSymbol]
 	if beforeStockAmount < hold.Amount {
-		return errors.New("User does not have the required stock")
+    return logger.ErrorEventLog {
+      Timestamp: time.Now().Unix(),
+      Server: "ts0",
+      TransactionNum: hold.Id(),
+      Username: hold.UserId,
+      StockSymbol: hold.StockSymbol,
+      ErrorMessage: "Not enough money to purchase stocks",
+    }
 	}
 
 	stockMap[hold.UserId][hold.StockSymbol] -= hold.Amount
@@ -71,15 +79,22 @@ func (hold StockHolding) receive() error {
 func (hold MoneyHolding) pay() error {
 	beforeMoneyAmount := userMap[hold.UserId]
 	if beforeMoneyAmount < hold.Amount {
-		return errors.New("User does not have the required money")
+    return logger.ErrorEventLog {
+      Timestamp: time.Now().Unix(),
+      Server: "ts0",
+      TransactionNum: hold.Id(),
+      Username: hold.UserId,
+      Funds: beforeMoneyAmount,
+      ErrorMessage: "Not enough stocks to sell stock",
+    }
 	}
 
 	userMap[hold.UserId] -= hold.Amount
-  logger.log(logger.AccountTransactionLog{
+  logger.Log(logger.AccountTransactionLog{
     Timestamp: time.Now().Unix(),
     Server: "ts0",
     TransactionNum: hold.Id(),
-    Action: RemoveAction,
+    Action: logger.RemoveAction,
     Username: hold.UserId,
     Funds: userMap[hold.UserId],
   })
@@ -89,11 +104,11 @@ func (hold MoneyHolding) pay() error {
 
 func (hold MoneyHolding) receive() error {
 	userMap[hold.UserId] += hold.Amount
-  logger.log(logger.AccountTransactionLog{
+  logger.Log(logger.AccountTransactionLog{
     Timestamp: time.Now().Unix(),
     Server: "ts0",
     TransactionNum: hold.Id(),
-    Action: AddAction,
+    Action: logger.AddAction,
     Username: hold.UserId,
     Funds: userMap[hold.UserId],
   })
@@ -110,7 +125,7 @@ func (hold StockHolding) Id() int64 {
 
 func AddFunds(userId string, amount money.Money) error {
   tid := NewTransactionId()
-  receivable := MoneyHolding{UserId: userId, Amount: amount, TrasnactionNum: tid}
+  receivable := MoneyHolding{UserId: userId, Amount: amount, TransactionNum: tid}
 	return receivable.receive()
 }
 
@@ -144,6 +159,7 @@ func AllocateFunds(userId string, amount money.Money, stockSymbol string, stockA
 }
 
 func AllocateStocks(userId string, stockSymbol string, stockAmount int, amount money.Money) (Transaction, error) {
+  tid := NewTransactionId()
   payable := StockHolding{UserId: userId, StockSymbol: stockSymbol, Amount: stockAmount, TransactionNum: tid}
   receivable := MoneyHolding{UserId: userId, Amount: amount, TransactionNum: tid}
 	trans := Transaction{payable: payable, receivable: receivable}
