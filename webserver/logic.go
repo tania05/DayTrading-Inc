@@ -11,7 +11,7 @@ import (
 )
 
 const domain = "localhost"
-const port = 8080
+const port = 4441
 
 var onestack database.Transaction
 
@@ -32,7 +32,8 @@ func getQuote(user string, stock string) money.Money {
 	buff := make([]byte, 1024)
 	n, _ := conn.Read(buff)
 	log.Printf("Recieve: %s", buff[:n])
-	val, err := strconv.Atoi(strings.Split(string(buff),",")[0])
+	val, err := strconv.Atoi(strings.Replace(strings.Split(string(buff),",")[0],".","",-1))
+	fmt.Println(val)
 	return money.Money(val)
 }
 
@@ -42,7 +43,7 @@ func addFunds(user string, amount money.Money){
 }
 
 func transact(bs int, user string, amount money.Money, stock string) {
-	price := money.Money(25)//getQuote(user, stock)
+	price := getQuote(user, stock)
 	stocknum := int((amount/price))
 	cost := money.Money(stocknum * int(price))
 
