@@ -16,7 +16,8 @@ import (
 const domain = "localhost"
 const port = 4441
 
-var onestack database.Transaction
+var buystack []database.Transaction
+var sellstack []database.Transaction
 
 func getQuote(user string, stock string) money.Money {
 	addr := (domain + ":" + strconv.Itoa(port))
@@ -74,33 +75,38 @@ func transact(bs int, user string, amount money.Money, stock string) {
 		if err != nil {
 			panic(err)
 		}
-		onestack = t
+		buystack = append(buystack, t)
 		fmt.Println("buy")
 		//err := pushPendingBuy(cost, stocknum, stock, user)
 	} else {
 		t, _ := database.AllocateStocks(user, stock, stocknum, cost)
-		onestack = t
+		sellstack = append(sellstack, t)
 		fmt.Println("sell")
 	}
 }
 
 func commitTransact(bs int, user string){
 	//fmt.Println("buy/sell confirm")
-	if bs == 1 {
-		database.Commit(onestack)
+
+	if bs == 1 && len(buystack) > 0{
+		database.Commit(popback(buystack))
 		fmt.Println("buy confirm")
-
-	} else {
-		database.Commit(onestack)
+	} else if len(sellstack) > 0{
+		database.Commit(popback(sellstack))
 		fmt.Println("sell confirm")
-
 	}
 }
 
 func cancelTransact(bs int, user string){
-	if bs == 1 {
-		database.Cancel(onestack)
-	} else {
-		database.Cancel(onestack)
+	if bs == 1 && len(buystack) > 0 {
+		database.Cancel(popback(buystack))
+	} else if len(sellstack) > 0{
+		database.Cancel(popback(sellstack))
 	}
+}
+
+func popback(s []database.Transaction) database.Transaction {
+	x, a := s[len(s)-1], s[:len(s)-1]
+	s = a
+	return x
 }
