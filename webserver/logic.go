@@ -60,7 +60,7 @@ func addFunds(user string, amount money.Money){
 		TransactionNum: 69,
 		Username: user,
 		Server: "ts1",
-		Timestamp: time.Now().UnixNow() / 1000,
+		Timestamp: time.Now().UnixNano() / 1000,
 		Funds: amount})
 }
 
