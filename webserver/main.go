@@ -11,6 +11,7 @@ import (
   "webserver/internal/logger"
   "webserver/internal/money"
   "webserver/internal/database"
+  "webserver/internal/trigger"
   "io/ioutil"
 )
 
@@ -219,34 +220,87 @@ func DeleteSellHandler(w http.ResponseWriter, r *http.Request) {
 //SetBuyAmount
 func PostBuyTriggerHandler(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusCreated)
+  var payload SetBuyAmountCommand 
+  body, _ := ioutil.ReadAll(r.Body)
+  err := json.Unmarshal(body, &payload)
+  
+  if err != nil {
+    panic(err)
+  }
+  defer r.Body.Close()
+  trigger.SetBuyAmount(payload.UserId, payload.StockSymbol, money.Money(payload.Amount))
   io.WriteString(w, "Set Buy Amount!")
 }
 
 //SetBuyTrigger
 func PutBuyTriggerHandler(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusOK)
+  var payload SetBuyTriggerCommand 
+  body, _ := ioutil.ReadAll(r.Body)
+  err := json.Unmarshal(body, &payload)
+  
+  if err != nil {
+    panic(err)
+  }
+  defer r.Body.Close()
+  trigger.SetBuyTrigger(payload.UserId, payload.StockSymbol, money.Money(payload.Amount))
   io.WriteString(w, "Set Buy Trigger!")
 }
 
 func DeleteBuyTriggerHandler(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusOK)
+  var payload CancelSetBuyCommand 
+  body, _ := ioutil.ReadAll(r.Body)
+  err := json.Unmarshal(body, &payload)
+  if err != nil {
+    panic(err)
+  }
+  defer r.Body.Close()
+  trigger.CancelSetBuy(payload.UserId, payload.StockSymbol)
   io.WriteString(w, "Cancel Buy Trigger!")
 }
 
 //SetSellAmount
 func PostSellTriggerHandler(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusCreated)
+  var payload SetSellAmountCommand 
+  body, _ := ioutil.ReadAll(r.Body)
+  err := json.Unmarshal(body, &payload)
+  
+  if err != nil {
+    panic(err)
+  }
+  defer r.Body.Close()
+  trigger.SetSellAmount(payload.UserId, payload.StockSymbol, money.Money(payload.Amount))
   io.WriteString(w, "Set sell amount!")
 }
 
 //SetSellTrigger
 func PutSellTriggerHandler(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusOK)
+  w.WriteHeader(http.StatusOK)
+  var payload SetSellTriggerCommand 
+  body, _ := ioutil.ReadAll(r.Body)
+  err := json.Unmarshal(body, &payload)
+  
+  if err != nil {
+    panic(err)
+  }
+  defer r.Body.Close()
+  trigger.SetSellTrigger(payload.UserId, payload.StockSymbol, money.Money(payload.Amount))
   io.WriteString(w, "Set Sell Trigger!")
 }
 
 func DeleteSellTriggerHandler(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusOK)
+  var payload CancelSetSellCommand 
+  body, _ := ioutil.ReadAll(r.Body)
+  err := json.Unmarshal(body, &payload)
+  if err != nil {
+    panic(err)
+  }
+  defer r.Body.Close()
+  trigger.CancelSetSell(payload.UserId, payload.StockSymbol)
   io.WriteString(w, "Cancel sell trigger!")
 }
 

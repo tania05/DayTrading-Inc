@@ -186,7 +186,6 @@ func CancelSetSell(userId string, stockSymbol string) error {
   delete(userMap, stockSymbol)
 
   return nil
-
 }
 
 func executeBuyTrigger(t *trigger, quotePrice money.Money, userId string, stockSymbol string) error {
