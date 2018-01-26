@@ -127,6 +127,13 @@ func main() {
   fmt.Println(database.CheckFunds("abcdef"))
   fmt.Println(database.CheckStock("abcdef", "Q"))
 
+  addFunds("adad", 120)
+  fmt.Println(database.CheckFunds("adad"))
+  transact(1, "adad", 50, "T")
+  commitTransact(1, "adad")
+  fmt.Println(database.CheckFunds("adad"))
+  fmt.Println(database.CheckStock("adad","T"))
+
   r := mux.NewRouter()
   r.HandleFunc("/", HelloHandler)
   r.Path("/users").Methods("POST").HandlerFunc(PostAddHandler);
