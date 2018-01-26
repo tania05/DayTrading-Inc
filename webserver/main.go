@@ -17,6 +17,7 @@ func HelloHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func PostAddHandler(w http.ResponseWriter, r *http.Request) {
+
   w.WriteHeader(http.StatusOK)
   io.WriteString(w, "Add Post!")  
 }
@@ -141,12 +142,12 @@ func main() {
   fmt.Println(database.CheckFunds("abcdef"))
   fmt.Println(database.CheckStock("abcdef", "Q"))
 
-  addFunds("adad", 120)
+  addFunds("adad", 55000)
   fmt.Println(database.CheckFunds("adad"))
-  transact(1, "adad", 50, "T")
+  transact(1, "adad", 50, "TTT")
   commitTransact(1, "adad")
   fmt.Println(database.CheckFunds("adad"))
-  fmt.Println(database.CheckStock("adad","T"))
+  fmt.Println(database.CheckStock("adad","TTT"))
 
   r := mux.NewRouter()
   r.HandleFunc("/", HelloHandler)
