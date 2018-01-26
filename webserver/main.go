@@ -11,7 +11,6 @@ import (
   "webserver/internal/logger"
   "webserver/internal/money"
   "webserver/internal/database"
-  // "bytes"
   "io/ioutil"
 )
 
@@ -288,22 +287,6 @@ func main() {
 
   bytes, _ := xml.Marshal(l)
   fmt.Println(string(bytes))
-
-  // fmt.Println(database.AddFunds("abcdef", 100))
-  // t, _ := database.AllocateFunds("abcdef", 10, "Q", 4)
-  // fmt.Println(t)
-  // fmt.Println(database.CheckFunds("abcdef"))
-  // fmt.Println(database.CheckStock("abcdef", "Q"))
-  // database.Commit(t)
-  // fmt.Println(database.CheckFunds("abcdef"))
-  // fmt.Println(database.CheckStock("abcdef", "Q"))
-
-  // addFunds("adad", 55000)
-  // fmt.Println(database.CheckFunds("adad"))
-  // transact(1, "adad", 50, "TTT")
-  // commitTransact(1, "adad")
-  // fmt.Println(database.CheckFunds("adad"))
-  // fmt.Println(database.CheckStock("adad","TTT"))
 
   r := mux.NewRouter()
   r.HandleFunc("/", HelloHandler)
