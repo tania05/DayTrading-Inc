@@ -6,26 +6,26 @@ import (
 	"webserver/internal/money"
 )
 
-type commandType string
+type CommandType string
 type action string
 
 const (
-	Add            commandType = "ADD"
-	Quote          commandType = "QUOTE"
-	Buy            commandType = "BUY"
-	CommitBuy      commandType = "COMMIT_BUY"
-	CancelBuy      commandType = "CANCEL_BUY"
-	Sell           commandType = "SELL"
-	CommitSell     commandType = "COMMIT_SELL"
-	CancelSell     commandType = "CANCEL_SELL"
-	SetBuyAmount   commandType = "SET_BUY_AMOUNT"
-	SetBuyTrigger  commandType = "SET_BUY_TRIGGER"
-	CancelSetBuy   commandType = "CANCEL_SET_BUY"
-	SetSellAmount  commandType = "SET_SELL_AMOUNT"
-	SetSellTrigger commandType = "SET_SELL_TRIGGER"
-	CancelSetSell  commandType = "CANCEL_SET_SELL"
-	DumpLog        commandType = "DUMPLOG"
-	DisplaySummary commandType = "DISPLAY_SUMMARY"
+	Add            CommandType = "ADD"
+	Quote          CommandType = "QUOTE"
+	Buy            CommandType = "BUY"
+	CommitBuy      CommandType = "COMMIT_BUY"
+	CancelBuy      CommandType = "CANCEL_BUY"
+	Sell           CommandType = "SELL"
+	CommitSell     CommandType = "COMMIT_SELL"
+	CancelSell     CommandType = "CANCEL_SELL"
+	SetBuyAmount   CommandType = "SET_BUY_AMOUNT"
+	SetBuyTrigger  CommandType = "SET_BUY_TRIGGER"
+	CancelSetBuy   CommandType = "CANCEL_SET_BUY"
+	SetSellAmount  CommandType = "SET_SELL_AMOUNT"
+	SetSellTrigger CommandType = "SET_SELL_TRIGGER"
+	CancelSetSell  CommandType = "CANCEL_SET_SELL"
+	DumpLog        CommandType = "DUMPLOG"
+	DisplaySummary CommandType = "DISPLAY_SUMMARY"
 )
 
 const (
@@ -37,8 +37,8 @@ type UserCommandLog struct {
 	XMLName        xml.Name    `xml:"userCommand"`
 	Timestamp      int64       `xml:"timestamp"`
 	Server         string      `xml:"server"`
-	TransactionNum int         `xml:"transactionNum"`
-	Command        commandType `xml:"command"`
+	TransactionNum int64       `xml:"transactionNum"`
+	Command        CommandType `xml:"command"`
 	Username       string      `xml:"username"`
 	StockSymbol    string      `xml:"stockSymbol,omitempty"`
 	Filename       string      `xml:"filename,omitempty"`
@@ -49,7 +49,7 @@ type QuoteServerLog struct {
 	XMLName         xml.Name    `xml:"quoteServer"`
 	Timestamp       int64       `xml:"timestamp"`
 	Server          string      `xml:"server"`
-	TransactionNum  int         `xml:"transactionNum"`
+	TransactionNum  int64       `xml:"transactionNum"`
 	Price           money.Money `xml:"price"`
 	StockSymbol     string      `xml:"stockSymbol"`
 	Username        string      `xml:"username"`
@@ -61,20 +61,18 @@ type AccountTransactionLog struct {
 	XMLName        xml.Name    `xml:"accountTransaction"`
 	Timestamp      int64       `xml:"timestamp"`
 	Server         string      `xml:"server"`
-	TransactionNum int         `xml:"transactionNum"`
+	TransactionNum int64       `xml:"transactionNum"`
 	Action         action      `xml:"action"`
-	Username       string      `xml:"username,omitempty"`
-	StockSymbol    string      `xml:"stockSymbol,omitempty"`
-	Filename       string      `xml:"filename,omitempty"`
-	Funds          money.Money `xml:"funds,omitempty"`
+	Username       string      `xml:"username"`
+	Funds          money.Money `xml:"funds"`
 }
 
 type SystemEventLog struct {
 	XMLName        xml.Name    `xml:"systemEvent"`
 	Timestamp      int64       `xml:"timestamp"`
 	Server         string      `xml:"server"`
-	TransactionNum int         `xml:"transactionNum"`
-	Command        commandType `xml:"command"`
+	TransactionNum int64       `xml:"transactionNum"`
+	Command        CommandType `xml:"command"`
 	Username       string      `xml:"username,omitempty"`
 	StockSymbol    string      `xml:"stockSymbol,omitempty"`
 	Filename       string      `xml:"filename,omitempty"`
@@ -85,8 +83,8 @@ type ErrorEventLog struct {
 	XMLName        xml.Name    `xml:"errorEvent"`
 	Timestamp      int64       `xml:"timestamp"`
 	Server         string      `xml:"server"`
-	TransactionNum int         `xml:"transactionNum"`
-	Command        commandType `xml:"command"`
+	TransactionNum int64       `xml:"transactionNum"`
+	Command        CommandType `xml:"command"`
 	Username       string      `xml:"username,omitempty"`
 	StockSymbol    string      `xml:"stockSymbol,omitempty"`
 	Filename       string      `xml:"filename,omitempty"`
@@ -98,8 +96,8 @@ type DebugEventLog struct {
 	XMLName        xml.Name    `xml:"debugEvent"`
 	Timestamp      int64       `xml:"timestamp"`
 	Server         string      `xml:"server"`
-	TransactionNum int         `xml:"transactionNum"`
-	Command        commandType `xml:"command"`
+	TransactionNum int64       `xml:"transactionNum"`
+	Command        CommandType `xml:"command"`
 	Username       string      `xml:"username,omitempty"`
 	StockSymbol    string      `xml:"stockSymbol,omitempty"`
 	Filename       string      `xml:"filename,omitempty"`
@@ -128,6 +126,15 @@ func (v ErrorEventLog) asXml() ([]byte, error) {
 }
 func (v DebugEventLog) asXml() ([]byte, error) {
   return xml.Marshal(v)
+}
+
+func (v ErrorEventLog) Error() string {
+  bytes, internalErr := v.asXml()
+  if internalErr != nil {
+    return "Error creating error message"
+  }
+
+  return string(bytes)
 }
 
 // Global logger worker

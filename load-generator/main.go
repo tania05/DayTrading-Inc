@@ -102,6 +102,7 @@ const get = "GET"
 func postRequest(path string, reqType string, payload interface{}) string{
   buff, _ := json.Marshal(payload)
   req, _ := http.NewRequest(strings.ToUpper(reqType), url+path, bytes.NewBuffer(buff))
+  req.Header.Add("Content-Type","application/json") 
   resp, e := http.DefaultClient.Do(req)
 
   if (e!= nil){
@@ -328,6 +329,6 @@ func main() {
       userMap[userId] = append(userMap[userId], displaySummary)
     }
   }
-  
+
   handleCommand(userMap)
 }

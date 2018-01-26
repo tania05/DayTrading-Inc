@@ -5,75 +5,112 @@ import (
 	"webserver/internal/money"
 )
 
-type holding interface {
+type Holding interface {
 	pay() error
 	receive() error
+  Id() int64
 }
 
 type Transaction struct {
-	payable    holding
-	receivable holding
+	payable    Holding
+	receivable Holding
 }
 
-type stockHolding struct {
-	userId      string
-	stockSymbol string
-	amount      int
+type StockHolding struct {
+	UserId      string
+	StockSymbol string
+	Amount      int
+  TransactionNum int64
 }
 
-type moneyHolding struct {
-	userId string
-	amount money.Money
+type MoneyHolding struct {
+	UserId string
+	Amount money.Money
+  TransactionNum int64
 }
 
 var userMap map[string]money.Money
 var stockMap map[string]map[string]int
+var nextTransactionId int64
 
 func init() {
 	userMap = make(map[string]money.Money)
 	stockMap = make(map[string]map[string]int)
+  nextTransactionId = 1
 }
 
-func (hold stockHolding) pay() error {
-	if stockMap[hold.userId] == nil {
-		stockMap[hold.userId] = make(map[string]int)
+func NewTransactionId() int64 {
+  v := nextTransactionId
+  nextTransactionId++
+  return v
+}
+
+func (hold StockHolding) pay() error {
+	if stockMap[hold.UserId] == nil {
+		stockMap[hold.UserId] = make(map[string]int)
 	}
 
-	beforeStockAmount := stockMap[hold.userId][hold.stockSymbol]
-	if beforeStockAmount < hold.amount {
+	beforeStockAmount := stockMap[hold.UserId][hold.StockSymbol]
+	if beforeStockAmount < hold.Amount {
 		return errors.New("User does not have the required stock")
 	}
 
-	stockMap[hold.userId][hold.stockSymbol] -= hold.amount
+	stockMap[hold.UserId][hold.StockSymbol] -= hold.Amount
 	return nil
 }
 
-func (hold stockHolding) receive() error {
-	if stockMap[hold.userId] == nil {
-		stockMap[hold.userId] = make(map[string]int)
+func (hold StockHolding) receive() error {
+	if stockMap[hold.UserId] == nil {
+		stockMap[hold.UserId] = make(map[string]int)
 	}
 
-	stockMap[hold.userId][hold.stockSymbol] += hold.amount
+	stockMap[hold.UserId][hold.StockSymbol] += hold.Amount
 	return nil
 }
 
-func (hold moneyHolding) pay() error {
-	beforeMoneyAmount := userMap[hold.userId]
-	if beforeMoneyAmount < hold.amount {
+func (hold MoneyHolding) pay() error {
+	beforeMoneyAmount := userMap[hold.UserId]
+	if beforeMoneyAmount < hold.Amount {
 		return errors.New("User does not have the required money")
 	}
 
-	userMap[hold.userId] -= hold.amount
+	userMap[hold.UserId] -= hold.Amount
+  logger.log(logger.AccountTransactionLog{
+    Timestamp: time.Now().Unix(),
+    Server: "ts0",
+    TransactionNum: hold.Id(),
+    Action: RemoveAction,
+    Username: hold.UserId,
+    Funds: userMap[hold.UserId],
+  })
+
 	return nil
 }
 
-func (hold moneyHolding) receive() error {
-	userMap[hold.userId] += hold.amount
+func (hold MoneyHolding) receive() error {
+	userMap[hold.UserId] += hold.Amount
+  logger.log(logger.AccountTransactionLog{
+    Timestamp: time.Now().Unix(),
+    Server: "ts0",
+    TransactionNum: hold.Id(),
+    Action: AddAction,
+    Username: hold.UserId,
+    Funds: userMap[hold.UserId],
+  })
 	return nil
+}
+
+func (hold MoneyHolding) Id() int64 {
+  return hold.TransactionNum
+}
+
+func (hold StockHolding) Id() int64 {
+  return hold.TransactionNum
 }
 
 func AddFunds(userId string, amount money.Money) error {
-	receivable := moneyHolding{userId: userId, amount: amount}
+  tid := NewTransactionId()
+  receivable := MoneyHolding{UserId: userId, Amount: amount, TrasnactionNum: tid}
 	return receivable.receive()
 }
 
@@ -98,19 +135,83 @@ func attemptAllocate(trans Transaction) (Transaction, error) {
 }
 
 func AllocateFunds(userId string, amount money.Money, stockSymbol string, stockAmount int) (Transaction, error) {
-	payable := moneyHolding{userId: userId, amount: amount}
-	receivable := stockHolding{userId: userId, stockSymbol: stockSymbol, amount: stockAmount}
+  tid := NewTransactionId()
+  payable := MoneyHolding{UserId: userId, Amount: amount, TransactionNum: tid}
+  receivable := StockHolding{UserId: userId, StockSymbol: stockSymbol, Amount: stockAmount, TransactionNum: tid}
 	trans := Transaction{payable: payable, receivable: receivable}
 
 	return attemptAllocate(trans)
 }
 
 func AllocateStocks(userId string, stockSymbol string, stockAmount int, amount money.Money) (Transaction, error) {
-	payable := stockHolding{userId: userId, stockSymbol: stockSymbol, amount: stockAmount}
-	receivable := moneyHolding{userId: userId, amount: amount}
+  payable := StockHolding{UserId: userId, StockSymbol: stockSymbol, Amount: stockAmount, TransactionNum: tid}
+  receivable := MoneyHolding{UserId: userId, Amount: amount, TransactionNum: tid}
 	trans := Transaction{payable: payable, receivable: receivable}
 
 	return attemptAllocate(trans)
+}
+
+func HoldStocks(userId string, stockSymbol string, amount int) (Holding, error) {
+  tid := NewTransactionId()
+  hold := StockHolding{UserId: userId, StockSymbol: stockSymbol, Amount: amount, TransactionNum: tid}
+
+  err := hold.pay()
+  if err != nil {
+    return nil, err
+  }
+
+  return hold, nil
+}
+
+func HoldMoney(userId string, amount money.Money) (Holding, error) {
+  tid := NewTransactionId()
+  hold := MoneyHolding{UserId: userId, Amount: amount, TransactionNum: tid}
+
+  err := hold.pay()
+  if err != nil {
+    return nil, err
+  }
+
+  return hold, nil
+}
+
+//TODO return and execute should be atomic
+func Return(holds... Holding) error {
+  executed := make([]Holding, len(holds))
+
+  for _, hold := range holds {
+    h := Holding(hold)
+    err := h.receive()
+    if err != nil {
+      // When we add the database, we should just cancel
+      for _, usedHold := range executed {
+        usedHold.pay()
+      }
+      return err
+    }
+    executed = append(executed, h)
+  }
+
+  return nil
+}
+
+func Execute(holds... Holding) error {
+  executed := make([]Holding, len(holds))
+
+  for _, hold := range holds {
+    h := Holding(hold)
+    err := h.pay()
+    if err != nil {
+      // When we add the database, we should just cancel
+      for _, usedHold := range executed {
+        usedHold.receive()
+      }
+      return err
+    }
+    executed = append(executed, h)
+  }
+
+  return nil
 }
 
 func Commit(trans Transaction) error {
