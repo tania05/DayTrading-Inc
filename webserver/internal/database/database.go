@@ -54,7 +54,7 @@ func (hold StockHolding) pay() error {
 	beforeStockAmount := stockMap[hold.UserId][hold.StockSymbol]
 	if beforeStockAmount < hold.Amount {
     return logger.ErrorEventLog {
-      Timestamp: time.Now().UnixNano() / 1000,
+      Timestamp: time.Now().UnixNano() / 1e6,
       Server: "ts0",
       TransactionNum: hold.Id(),
       Username: hold.UserId,
@@ -80,7 +80,7 @@ func (hold MoneyHolding) pay() error {
 	beforeMoneyAmount := userMap[hold.UserId]
 	if beforeMoneyAmount < hold.Amount {
     return logger.ErrorEventLog {
-      Timestamp: time.Now().UnixNano() / 1000,
+      Timestamp: time.Now().UnixNano() / 1e6,
       Server: "ts0",
       TransactionNum: hold.Id(),
       Username: hold.UserId,
@@ -91,7 +91,7 @@ func (hold MoneyHolding) pay() error {
 
 	userMap[hold.UserId] -= hold.Amount
   logger.Log(logger.AccountTransactionLog{
-    Timestamp: time.Now().UnixNano() / 1000,
+    Timestamp: time.Now().UnixNano() / 1e6,
     Server: "ts0",
     TransactionNum: hold.Id(),
     Action: logger.RemoveAction,
@@ -105,7 +105,7 @@ func (hold MoneyHolding) pay() error {
 func (hold MoneyHolding) receive() error {
 	userMap[hold.UserId] += hold.Amount
   logger.Log(logger.AccountTransactionLog{
-    Timestamp: time.Now().UnixNano() / 1000,
+    Timestamp: time.Now().UnixNano() / 1e6,
     Server: "ts0",
     TransactionNum: hold.Id(),
     Action: logger.AddAction,

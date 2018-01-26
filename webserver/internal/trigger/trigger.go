@@ -36,7 +36,7 @@ func getUserMap(triggerMap map[string]map[string]*trigger, userId string) map[st
 func ensureTriggerDoesNotExist(t *trigger, command logger.CommandType, userId string, stockSymbol string) error {
   if t != nil {
     err := logger.ErrorEventLog {
-      Timestamp: time.Now().UnixNano() / 1000,
+      Timestamp: time.Now().UnixNano() / 1e6,
       Server: "ts0", //TODO
       TransactionNum: database.NewTransactionId(),
       Command: command,
@@ -53,7 +53,7 @@ func ensureTriggerDoesNotExist(t *trigger, command logger.CommandType, userId st
 func ensureTriggerExists(t *trigger, command logger.CommandType, userId string, stockSymbol string) error {
   if t == nil {
     err := logger.ErrorEventLog {
-      Timestamp: time.Now().UnixNano() / 1000,
+      Timestamp: time.Now().UnixNano() / 1e6,
       Server: "ts0", //TODO
       TransactionNum: database.NewTransactionId(),
       Command: command,
@@ -70,7 +70,7 @@ func ensureTriggerExists(t *trigger, command logger.CommandType, userId string, 
 func ensureTriggerNotRunning(t *trigger, command logger.CommandType, userId string, stockSymbol string) error {
   if t == nil || t.executionPrice != 0 {
     err := logger.ErrorEventLog {
-      Timestamp: time.Now().UnixNano() / 1000,
+      Timestamp: time.Now().UnixNano() / 1e6,
       Server: "ts0", //TODO
       TransactionNum: database.NewTransactionId(),
       Command: command,

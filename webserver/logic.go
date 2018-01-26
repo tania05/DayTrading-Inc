@@ -40,7 +40,7 @@ func getQuote(user string, stock string) money.Money {
 	val, err := strconv.Atoi(strings.Replace(strings.Split(string(buff),",")[0],".","",-1))
 	
 	logger.Log(logger.QuoteServerLog{
-		Timestamp: time.Now().UnixNano() / 1000,
+		Timestamp: time.Now().UnixNano() / 1e6,
 		Server: "ts1",
 		TransactionNum: 69,
 		QuoteServerTime: int64(f3),
@@ -60,7 +60,7 @@ func addFunds(user string, amount money.Money){
 		TransactionNum: 69,
 		Username: user,
 		Server: "ts1",
-		Timestamp: time.Now().UnixNano() / 1000,
+		Timestamp: time.Now().UnixNano() / 1e6,
 		Funds: amount})
 }
 
