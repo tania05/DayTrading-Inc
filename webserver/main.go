@@ -14,84 +14,105 @@ import (
 )
 
 type AddCommand struct {
-	UserId string
-	Amount int
+  TransactionNum int64
+  UserId string
+  Amount int
 }
 
 type QuoteCommand struct {
-	UserId      string
-	StockSymbol string
-}
+  TransactionNum int64  
+  UserId string
+  StockSymbol string
+ }
 
 type BuyCommand struct {
-	UserId      string
-	StockSymbol string
-	Amount      int
+  TransactionNum int64  
+  UserId string
+  StockSymbol string
+  Amount int
 }
 
 type CommitBuyCommand struct {
-	UserId string
+  TransactionNum int64  
+  UserId string
 }
 
 type CancelBuyCommand struct {
-	UserId string
+  TransactionNum int64  
+  UserId string
 }
 
 type SellCommand struct {
-	UserId      string
-	StockSymbol string
-	Amount      int
+  TransactionNum int64  
+  UserId string
+  StockSymbol string
+  Amount int
 }
 
 type CommitSellCommand struct {
-	UserId string
+  TransactionNum int64
+  UserId string
 }
 
 type CancelSellCommand struct {
-	UserId string
+  TransactionNum int64
+  UserId string
 }
 
 type SetBuyAmountCommand struct {
-	UserId      string
-	StockSymbol string
-	Amount      int
+  TransactionNum int64
+  UserId string
+  StockSymbol string
+  Amount int
 }
 
 type CancelSetBuyCommand struct {
-	UserId      string
-	StockSymbol string
+  TransactionNum int64
+  UserId string
+  StockSymbol string
 }
 
 type SetBuyTriggerCommand struct {
-	UserId      string
-	StockSymbol string
-	Amount      int
+  TransactionNum int64
+  UserId string
+  StockSymbol string
+  Amount int
 }
 
 type SetSellAmountCommand struct {
-	UserId      string
-	StockSymbol string
-	Amount      int
+  TransactionNum int64
+  UserId string
+  StockSymbol string
+  Amount int
 }
 
 type CancelSetSellCommand struct {
-	UserId      string
-	StockSymbol string
+  TransactionNum int64
+  UserId string
+  StockSymbol string
 }
 
 type SetSellTriggerCommand struct {
-	UserId      string
-	StockSymbol string
-	Amount      int
+  TransactionNum int64
+  UserId string
+  StockSymbol string
+  Amount int
 }
 
 type DumplogCommand struct {
-	UserId      string
-	StockSymbol string
+  TransactionNum int64
+  UserId string
+  FileName string
+}
+
+type AdminDumblogCommand struct {
+  TransactionNum int64
+  FileName string
 }
 
 type DisplaySummary struct {
-	UserId string
+  TransactionNum int64
+  UserId string
 }
 
 func HelloHandler(w http.ResponseWriter, r *http.Request) {
@@ -302,9 +323,14 @@ func DeleteSellTriggerHandler(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, "Cancel sell trigger!")
 }
 
+func PostAdminDumpLogHandler(w http.ResponseWriter, r *http.Request) {
+  w.WriteHeader(http.StatusCreated)
+  io.WriteString(w, "Admin Dump logger")
+}
+
 func PostDumpLogHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
-	io.WriteString(w, "Dump logger!")
+	io.WriteString(w, "User Dump logger!")
 }
 
 func GetDisplaySummaryHandler(w http.ResponseWriter, r *http.Request) {
@@ -343,9 +369,9 @@ func main() {
   r.Path("/triggers/{stockSym}/sell").Methods("PUT").HandlerFunc(PutSellTriggerHandler);
   r.Path("/triggers/{stockSym}/sell").Methods("DELETE").HandlerFunc(DeleteSellTriggerHandler);
 
-  r.Path("/dump").Methods("POST").HandlerFunc(PostDumpLogHandler);
+  r.Path("/users/dump").Methods("POST").HandlerFunc(PostDumpLogHandler);
+  r.Path("/dump").Methods("POST").HandlerFunc(PostAdminDumpLogHandler);  
   r.Path("/users/{userId}/summary").Methods("GET").HandlerFunc(GetDisplaySummaryHandler);
-
 
   http.Handle("/", r)
   log.Fatal(http.ListenAndServe(":8080", nil))

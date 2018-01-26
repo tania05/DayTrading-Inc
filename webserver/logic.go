@@ -86,7 +86,6 @@ func transact(bs int, user string, amount money.Money, stock string) {
 
 func commitTransact(bs int, user string){
 	//fmt.Println("buy/sell confirm")
-
 	if bs == 1 {
 		database.Commit(onestack)
 		fmt.Println("buy confirm")
@@ -96,7 +95,6 @@ func commitTransact(bs int, user string){
 		fmt.Println("sell confirm")
 
 	}
-
 }
 
 func cancelTransact(bs int, user string){
@@ -106,37 +104,3 @@ func cancelTransact(bs int, user string){
 		database.Cancel(onestack)
 	}
 }
-
-// func setTransAmount(bs int, user string, stock string, amount money){
-// 	if bs == 1 {
-// 		err = addBuyAmount(user, stock, amount)
-// 	}
-// 	else {
-// 		err = addSellAmount(user, stock, amount)
-// 	}
-// }
-
-// func setTransTrigger(bs int, user string, stock string, amount money){
-// 	if bs == 1 {
-// 		err = setBuyTrigger(user, stock, amount)
-// 	}
-// 	else {
-// 		err = setSellTrigger(user, stock, amount)
-// 	}
-// }
-
-// func cancelTransSet(bs int, user string, stock string){
-// 	if bs == 1 {
-// 		err = cancelBuyTrigger(user, stock)
-// 	}
-// 	else {
-// 		err = cancelSellTrigger(user, stock)
-// 	}
-// }
-
-
-// func main() {
-
-// 	c := getQuote("TST,user")
-// 	log.Printf("%s", c)
-// }

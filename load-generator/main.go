@@ -9,83 +9,104 @@ import "encoding/json"
 import "bytes"
 
 type AddCommand struct {
+  TransactionNum int64
   UserId string
   Amount int
 }
 
 type QuoteCommand struct {
+  TransactionNum int64  
   UserId string
   StockSymbol string
  }
 
 type BuyCommand struct {
+  TransactionNum int64  
   UserId string
   StockSymbol string
   Amount int
 }
 
 type CommitBuyCommand struct {
+  TransactionNum int64  
   UserId string
 }
 
 type CancelBuyCommand struct {
+  TransactionNum int64  
   UserId string
 }
 
 type SellCommand struct {
+  TransactionNum int64  
   UserId string
   StockSymbol string
   Amount int
 }
 
 type CommitSellCommand struct {
+  TransactionNum int64
   UserId string
 }
 
 type CancelSellCommand struct {
+  TransactionNum int64
   UserId string
 }
 
 type SetBuyAmountCommand struct {
+  TransactionNum int64
   UserId string
   StockSymbol string
   Amount int
 }
 
 type CancelSetBuyCommand struct {
+  TransactionNum int64
   UserId string
   StockSymbol string
 }
 
 type SetBuyTriggerCommand struct {
+  TransactionNum int64
   UserId string
   StockSymbol string
   Amount int
 }
 
 type SetSellAmountCommand struct {
+  TransactionNum int64
   UserId string
   StockSymbol string
   Amount int
 }
 
 type CancelSetSellCommand struct {
+  TransactionNum int64
   UserId string
   StockSymbol string
 }
 
 type SetSellTriggerCommand struct {
+  TransactionNum int64
   UserId string
   StockSymbol string
   Amount int
 }
 
 type DumplogCommand struct {
+  TransactionNum int64
   UserId string
-  StockSymbol string
+  FileName string
+}
+
+type AdminDumblogCommand struct {
+  TransactionNum int64
+  FileName string
 }
 
 type DisplaySummary struct {
+  TransactionNum int64
   UserId string
 }
 
@@ -183,6 +204,10 @@ func (command SetSellTriggerCommand) request() string {
 }
 
 func (command DumplogCommand) request() string {
+  return postRequest("/"+command.UserId+"/dump", post, command)
+}
+
+func (command AdminDumblogCommand) request() string {
   return postRequest("/dump", post, command)
 }
 
@@ -197,6 +222,7 @@ func handleCommand(userMap map[string][]Command) {
       fmt.Println(n.request())
     }
   }
+
 }
 
 func main() {
@@ -215,10 +241,15 @@ func main() {
     if len(parts) < 2 {
       continue
     }
-    
+    fmt.Println("************************************************************")
+    fmt.Println(parts[0])
     userId := parts[1]
-
-    commandType := strings.Split(parts[0], " ")[1]
+    transCommand := strings.Split(parts[0], " ")
+    transactionNum, _ := strconv.ParseInt(strings.Trim((transCommand[0]),"[]"),10,0)
+    commandType := transCommand[1]
+    fmt.Println(transactionNum)
+    fmt.Println(commandType)
+    // transactionNum, commandType := strings.Split(parts[0], " ")
     
     switch commandType{
     case "ADD":
@@ -228,12 +259,12 @@ func main() {
       }
       var amount = int(a64)
       
-      addCommand := AddCommand{UserId: userId, Amount: amount}
+      addCommand := AddCommand{TransactionNum: transactionNum, UserId: userId, Amount: amount}
       userMap[userId] = append(userMap[userId], addCommand)
     
     case "QUOTE":
       stockSymbol := parts[2]
-      quoteCommand := QuoteCommand{UserId: userId, StockSymbol: stockSymbol}
+      quoteCommand := QuoteCommand{TransactionNum: transactionNum,UserId: userId, StockSymbol: stockSymbol}
       userMap[userId] = append(userMap[userId], quoteCommand)
     
     case "BUY":
@@ -244,15 +275,15 @@ func main() {
       var amount = int(a64)
       stockSymbol := parts[2]
       
-      buyCommand := BuyCommand{UserId: userId, StockSymbol: stockSymbol, Amount: amount}
+      buyCommand := BuyCommand{ TransactionNum: transactionNum, UserId: userId, StockSymbol: stockSymbol, Amount: amount}
       userMap[userId] = append(userMap[userId], buyCommand)
      
     case "COMMIT_BUY":
-      commitBuyCommand := CommitBuyCommand{UserId : userId}
+      commitBuyCommand := CommitBuyCommand{ TransactionNum: transactionNum, UserId : userId }
       userMap[userId] = append(userMap[userId], commitBuyCommand)
     
     case "CANCEL_BUY":
-      cancelBuyCommand := CancelBuyCommand{UserId : userId}
+      cancelBuyCommand := CancelBuyCommand{ TransactionNum: transactionNum, UserId : userId}
       userMap[userId] = append(userMap[userId], cancelBuyCommand)
 
     case "SELL":
@@ -263,15 +294,15 @@ func main() {
       var amount = int(a64)
       stockSymbol := parts[2]
       
-      sellCommand := SellCommand{UserId: userId, StockSymbol: stockSymbol, Amount: amount}
+      sellCommand := SellCommand{ TransactionNum: transactionNum, UserId: userId, StockSymbol: stockSymbol, Amount: amount}
       userMap[userId] = append(userMap[userId], sellCommand)
      
     case "COMMIT_SELL":
-      commitSellCommand := CommitSellCommand{UserId : userId}
+      commitSellCommand := CommitSellCommand{ TransactionNum: transactionNum, UserId : userId}
       userMap[userId] = append(userMap[userId], commitSellCommand)
     
     case "CANCEL_SELL":
-      cancelSellCommand := CancelSellCommand{UserId : userId}
+      cancelSellCommand := CancelSellCommand{ TransactionNum: transactionNum, UserId : userId}
       userMap[userId] = append(userMap[userId], cancelSellCommand)
     
     case "SET_BUY_AMOUNT":
@@ -282,17 +313,17 @@ func main() {
       var amount = int(a64)
       stockSymbol := parts[2]
       
-      setBuyAmountCommand := SetBuyAmountCommand{UserId: userId, StockSymbol: stockSymbol, Amount: amount}
+      setBuyAmountCommand := SetBuyAmountCommand{ TransactionNum: transactionNum, UserId: userId, StockSymbol: stockSymbol, Amount: amount}
       userMap[userId] = append(userMap[userId], setBuyAmountCommand)
     
     case "CANCEL_SET_BUY":
       stockSymbol := parts[2]
-      cancelSetBuyCommand := CancelSetBuyCommand{UserId: userId, StockSymbol: stockSymbol}
+      cancelSetBuyCommand := CancelSetBuyCommand{ TransactionNum: transactionNum, UserId: userId, StockSymbol: stockSymbol}
       userMap[userId] = append(userMap[userId], cancelSetBuyCommand)
     
     case "SET_BUY_TRIGGER":
       stockSymbol := parts[2]
-      setBuyTriggerCommand := SetBuyTriggerCommand{UserId: userId, StockSymbol: stockSymbol}
+      setBuyTriggerCommand := SetBuyTriggerCommand{ TransactionNum: transactionNum, UserId: userId, StockSymbol: stockSymbol}
       userMap[userId] = append(userMap[userId], setBuyTriggerCommand)
     
     case "SET_SELL_AMOUNT":
@@ -303,29 +334,32 @@ func main() {
       var amount = int(a64)
       stockSymbol := parts[2]
       
-      setSellAmountCommand := SetSellAmountCommand{UserId: userId, StockSymbol: stockSymbol, Amount: amount}
+      setSellAmountCommand := SetSellAmountCommand{ TransactionNum: transactionNum, UserId: userId, StockSymbol: stockSymbol, Amount: amount}
       userMap[userId] = append(userMap[userId], setSellAmountCommand)
     
     case "CANCEL_SET_SELL":
       stockSymbol := parts[2]
-      cancelSetBuyCommand := CancelSetBuyCommand{UserId: userId, StockSymbol: stockSymbol}
+      cancelSetBuyCommand := CancelSetBuyCommand{ TransactionNum: transactionNum, UserId: userId, StockSymbol: stockSymbol}
       userMap[userId] = append(userMap[userId], cancelSetBuyCommand)
     
     case "SET_SELL_TRIGGER":
       stockSymbol := parts[2]
-      setSellTriggerCommand := SetSellTriggerCommand{UserId: userId, StockSymbol: stockSymbol}
+      setSellTriggerCommand := SetSellTriggerCommand{ TransactionNum: transactionNum, UserId: userId, StockSymbol: stockSymbol}
       userMap[userId] = append(userMap[userId], setSellTriggerCommand)
     
     case "DUMPLOG":
       if(len(parts) < 3) {
-        break
+        fileName := parts[1]
+        dumplogCommand := AdminDumblogCommand{ TransactionNum: transactionNum, FileName: fileName}
+        userMap["\n"] = append(userMap["\n"], dumplogCommand)
+      } else {
+        fileName := parts[2]
+        dumplogCommand := DumplogCommand{ TransactionNum: transactionNum, UserId: userId, FileName: fileName}
+        userMap[userId] = append(userMap[userId], dumplogCommand)
       }
-      stockSymbol := parts[2]
-      dumplogCommand := DumplogCommand{UserId: userId, StockSymbol: stockSymbol}
-      userMap[userId] = append(userMap[userId], dumplogCommand)
-     
+      
     case "DISPLAY_SUMMARY":
-      displaySummary := DisplaySummary{UserId : userId}
+      displaySummary := DisplaySummary{ TransactionNum: transactionNum, UserId : userId}
       userMap[userId] = append(userMap[userId], displaySummary)
     }
   }
