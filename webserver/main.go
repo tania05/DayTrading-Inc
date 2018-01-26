@@ -4,11 +4,9 @@ import (
   "net/http"
   "io"
   "encoding/json"
-  "encoding/xml"
   "github.com/gorilla/mux"
   "fmt"
   "log"
-  "webserver/internal/logger"
   "webserver/internal/money"
   "webserver/internal/database"
   "webserver/internal/trigger"
@@ -329,18 +327,6 @@ func GetDisplaySummaryHandler(w http.ResponseWriter, r *http.Request) {
 
 
 func main() {
-  l := logger.UserCommandLog{
-    Command: logger.CommitBuy,
-    TransactionNum: 2,
-    Username: "abcdef",
-    Timestamp: 1238099857,
-    StockSymbol: "ABC",
-    Funds: 100,
-  }
-  logger.Log(l)
-
-  bytes, _ := xml.Marshal(l)
-  fmt.Println(string(bytes))
 
   r := mux.NewRouter()
   r.HandleFunc("/", HelloHandler)
