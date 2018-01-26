@@ -63,10 +63,8 @@ type AccountTransactionLog struct {
 	Server         string      `xml:"server"`
 	TransactionNum int64       `xml:"transactionNum"`
 	Action         action      `xml:"action"`
-	Username       string      `xml:"username,omitempty"`
-	StockSymbol    string      `xml:"stockSymbol,omitempty"`
-	Filename       string      `xml:"filename,omitempty"`
-	Funds          money.Money `xml:"funds,omitempty"`
+	Username       string      `xml:"username"`
+	Funds          money.Money `xml:"funds"`
 }
 
 type SystemEventLog struct {

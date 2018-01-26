@@ -192,9 +192,10 @@ func CancelSetSell(userId string, stockSymbol string) error {
 func executeBuyTrigger(t *trigger, quotePrice money.Money, userId string, stockSymbol string) error {
   numStocks := int(t.amount) / int(quotePrice)
   refundAmt := money.Money(int(t.amount) - (numStocks * int(quotePrice)))
+  tid := t.deposit.Id()
 
-  reverseMoneyHold := database.MoneyHolding{UserId: userId, Amount: refundAmt}
-  reverseStockHold := database.StockHolding{UserId: userId, StockSymbol: stockSymbol, Amount: numStocks}
+  reverseMoneyHold := database.MoneyHolding{UserId: userId, Amount: refundAmt, TransactionNum: tid}
+  reverseStockHold := database.StockHolding{UserId: userId, StockSymbol: stockSymbol, Amount: numStocks, TransactionNum: tid}
 
   err := database.Return(reverseMoneyHold, reverseStockHold)
   return err
@@ -205,9 +206,10 @@ func executeSellTrigger(t *trigger, quotePrice money.Money, userId string, stock
   maxStocks := int(t.amount) / int(t.executionPrice)
   refundStocks := maxStocks - numStocks
   sellMoney := money.Money(numStocks * int(quotePrice))
+  tid := t.deposit.Id()
 
-  reverseMoneyHold := database.MoneyHolding{UserId: userId, Amount: sellMoney}
-  reverseStockHold := database.StockHolding{UserId: userId, StockSymbol: stockSymbol, Amount: refundStocks}
+  reverseMoneyHold := database.MoneyHolding{UserId: userId, Amount: sellMoney, TransactionNum: tid}
+  reverseStockHold := database.StockHolding{UserId: userId, StockSymbol: stockSymbol, Amount: refundStocks, TransactionNum: tid}
 
   err := database.Return(reverseMoneyHold, reverseStockHold)
   return err

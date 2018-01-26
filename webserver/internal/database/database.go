@@ -8,6 +8,7 @@ import (
 type Holding interface {
 	pay() error
 	receive() error
+  Id() int64
 }
 
 type Transaction struct {
@@ -19,11 +20,13 @@ type StockHolding struct {
 	UserId      string
 	StockSymbol string
 	Amount      int
+  TransactionNum int64
 }
 
 type MoneyHolding struct {
 	UserId string
 	Amount money.Money
+  TransactionNum int64
 }
 
 var userMap map[string]money.Money
@@ -72,16 +75,42 @@ func (hold MoneyHolding) pay() error {
 	}
 
 	userMap[hold.UserId] -= hold.Amount
+  logger.log(logger.AccountTransactionLog{
+    Timestamp: time.Now().Unix(),
+    Server: "ts0",
+    TransactionNum: hold.Id(),
+    Action: RemoveAction,
+    Username: hold.UserId,
+    Funds: userMap[hold.UserId],
+  })
+
 	return nil
 }
 
 func (hold MoneyHolding) receive() error {
 	userMap[hold.UserId] += hold.Amount
+  logger.log(logger.AccountTransactionLog{
+    Timestamp: time.Now().Unix(),
+    Server: "ts0",
+    TransactionNum: hold.Id(),
+    Action: AddAction,
+    Username: hold.UserId,
+    Funds: userMap[hold.UserId],
+  })
 	return nil
 }
 
+func (hold MoneyHolding) Id() int64 {
+  return hold.TransactionNum
+}
+
+func (hold StockHolding) Id() int64 {
+  return hold.TransactionNum
+}
+
 func AddFunds(userId string, amount money.Money) error {
-	receivable := MoneyHolding{UserId: userId, Amount: amount}
+  tid := NewTransactionId()
+  receivable := MoneyHolding{UserId: userId, Amount: amount, TrasnactionNum: tid}
 	return receivable.receive()
 }
 
@@ -106,23 +135,25 @@ func attemptAllocate(trans Transaction) (Transaction, error) {
 }
 
 func AllocateFunds(userId string, amount money.Money, stockSymbol string, stockAmount int) (Transaction, error) {
-	payable := MoneyHolding{UserId: userId, Amount: amount}
-	receivable := StockHolding{UserId: userId, StockSymbol: stockSymbol, Amount: stockAmount}
+  tid := NewTransactionId()
+  payable := MoneyHolding{UserId: userId, Amount: amount, TransactionNum: tid}
+  receivable := StockHolding{UserId: userId, StockSymbol: stockSymbol, Amount: stockAmount, TransactionNum: tid}
 	trans := Transaction{payable: payable, receivable: receivable}
 
 	return attemptAllocate(trans)
 }
 
 func AllocateStocks(userId string, stockSymbol string, stockAmount int, amount money.Money) (Transaction, error) {
-	payable := StockHolding{UserId: userId, StockSymbol: stockSymbol, Amount: stockAmount}
-	receivable := MoneyHolding{UserId: userId, Amount: amount}
+  payable := StockHolding{UserId: userId, StockSymbol: stockSymbol, Amount: stockAmount, TransactionNum: tid}
+  receivable := MoneyHolding{UserId: userId, Amount: amount, TransactionNum: tid}
 	trans := Transaction{payable: payable, receivable: receivable}
 
 	return attemptAllocate(trans)
 }
 
 func HoldStocks(userId string, stockSymbol string, amount int) (Holding, error) {
-  hold := StockHolding{UserId: userId, StockSymbol: stockSymbol, Amount: amount}
+  tid := NewTransactionId()
+  hold := StockHolding{UserId: userId, StockSymbol: stockSymbol, Amount: amount, TransactionNum: tid}
 
   err := hold.pay()
   if err != nil {
@@ -133,7 +164,8 @@ func HoldStocks(userId string, stockSymbol string, amount int) (Holding, error) 
 }
 
 func HoldMoney(userId string, amount money.Money) (Holding, error) {
-  hold := MoneyHolding{UserId: userId, Amount: amount}
+  tid := NewTransactionId()
+  hold := MoneyHolding{UserId: userId, Amount: amount, TransactionNum: tid}
 
   err := hold.pay()
   if err != nil {
