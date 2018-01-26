@@ -119,6 +119,13 @@ func main() {
   fmt.Println(string(bytes))
 
   fmt.Println(database.AddFunds("abcdef", 100))
+  t, _ := database.AllocateFunds("abcdef", 10, "Q", 4)
+  fmt.Println(t)
+  fmt.Println(database.CheckFunds("abcdef"))
+  fmt.Println(database.CheckStock("abcdef", "Q"))
+  database.Commit(t)
+  fmt.Println(database.CheckFunds("abcdef"))
+  fmt.Println(database.CheckStock("abcdef", "Q"))
 
   r := mux.NewRouter()
   r.HandleFunc("/", HelloHandler)
