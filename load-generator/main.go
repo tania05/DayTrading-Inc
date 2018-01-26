@@ -93,105 +93,101 @@ type Command interface {
   request() string
 }
 
-func postRequest(command Command) string{
-  buff, _ := json.Marshal(command)
-  resp, e := http.Post("http://postman-echo.com/post","application/json", bytes.NewBuffer(buff))
+const url = "http://webserver:8080"
+const post = "POST"
+const put = "PUT"
+const delete = "DELETE"
+const get = "GET"
+
+func postRequest(path string, reqType string, payload interface{}) string{
+  buff, _ := json.Marshal(payload)
+  req, _ := http.NewRequest(strings.ToUpper(reqType), url+path, bytes.NewBuffer(buff))
+  req.Header.Add("Content-Type","application/json") 
+  resp, e := http.DefaultClient.Do(req)
+
   if (e!= nil){
     panic(e)
   }
+  
   defer resp.Body.Close()    
   bs, _ := ioutil.ReadAll(resp.Body)
   return fmt.Sprintln(string(bs))
 }
 
-func getRequest(command Command) string{ // TODO: FIX pls
-  resp, e := http.Get("http://postman-echo.com/get")
+func getRequest(path string) string{ 
+  req, _ := http.NewRequest("GET", url+path, nil)
+  resp, e := http.DefaultClient.Do(req)
   if (e!= nil){
     panic(e)
   }
-  defer resp.Body.Close()
+  
+  defer resp.Body.Close()    
   bs, _ := ioutil.ReadAll(resp.Body)
   return fmt.Sprintln(string(bs))
 }
 
 func (command AddCommand) request() string {
-  // return fmt.Sprintln("")
-  return postRequest(command)
+  return postRequest("/users", post, command)
 }
 
 func (command QuoteCommand) request() string {
-  // return fmt.Sprintf("UserId %s StockSymbol %s", command.UserId, command.StockSymbol)
-  return getRequest(command)
+  return getRequest("/users")
 }
 
 func (command BuyCommand) request() string {
-  // return fmt.Sprintln("")
-  return postRequest(command)
+  return postRequest("/stocks/"+command.StockSymbol+"/buy", post, command)
 }
 
 func (command CommitBuyCommand) request() string {
-  // return fmt.Sprintln("")
-  return postRequest(command)
+  return postRequest("/stocks/buy", put, command)
 }
 
 func (command CancelBuyCommand) request() string {
-  // return fmt.Sprintln("")
-  return postRequest(command)
+  return postRequest("/stocks/buy", delete, command)
 }
 
 func (command SellCommand) request() string {
-  // return fmt.Sprintln("")
-  return postRequest(command)
+  return postRequest("/stocks/"+command.StockSymbol+"/sell", post, command)
 }
 
 func (command CommitSellCommand) request() string {
-  // return fmt.Sprintln("")
-  return postRequest(command)
+  return postRequest("/stocks/sell", put, command)
 }
 
 func (command CancelSellCommand) request() string {
-  // return fmt.Sprintln("")
-  return postRequest(command)
+  return postRequest("/stocks/sell", delete, command)
 }
 
 func (command SetBuyAmountCommand) request() string {
-  // return fmt.Sprintln("")
-  return postRequest(command)
+  return postRequest("/triggers/"+command.StockSymbol+"/buy", post, command)
 }
 
 func (command CancelSetBuyCommand) request() string {
-  // return fmt.Sprintln("")
-  return postRequest(command)
+  return postRequest("/triggers/"+command.StockSymbol+"/buy", post, command)
 }
 
 func (command SetBuyTriggerCommand) request() string {
-  // return fmt.Sprintln("")
-  return postRequest(command)
+  return postRequest("/triggers/"+command.StockSymbol+"/buy", post, command)
 }
 
 func (command SetSellAmountCommand) request() string {
-  // return fmt.Sprintln("")
-  return postRequest(command)
+  return postRequest("/triggers/"+command.StockSymbol+"/sell", post, command)
 }
 
 func (command CancelSetSellCommand) request() string {
-  // return fmt.Sprintln("")
-  return postRequest(command)
+  return postRequest("/triggers/"+command.StockSymbol+"/sell", post, command)
 }
 
 func (command SetSellTriggerCommand) request() string {
-  // fmt.Println(command.UserId)
-  return postRequest(command)
+  return postRequest("/triggers/"+command.StockSymbol+"/sell", post, command)
 }
 
 func (command DumplogCommand) request() string {
-  // return fmt.Sprintln("")
-  return postRequest(command)
+  return postRequest("/dump", post, command)
 }
 
 func (command DisplaySummary) request() string {
-  // return fmt.Sprintln("")
-  return postRequest(command)
+  return getRequest("/users/" + command.UserId + "/summary")
 }
 
 func handleCommand(userMap map[string][]Command) {
@@ -335,6 +331,4 @@ func main() {
   }
 
   handleCommand(userMap)
-
-
 }

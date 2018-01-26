@@ -9,9 +9,91 @@ import (
   "fmt"
   "log"
   "webserver/internal/logger"
-  "webserver/internal/database"
-  "webserver/internal/trigger"
+  "webserver/internal/money"
+  "io/ioutil"
 )
+
+type AddCommand struct {
+  UserId string
+  Amount int
+}
+
+type QuoteCommand struct {
+  UserId string
+  StockSymbol string
+ }
+
+type BuyCommand struct {
+  UserId string
+  StockSymbol string
+  Amount int
+}
+
+type CommitBuyCommand struct {
+  UserId string
+}
+
+type CancelBuyCommand struct {
+  UserId string
+}
+
+type SellCommand struct {
+  UserId string
+  StockSymbol string
+  Amount int
+}
+
+type CommitSellCommand struct {
+  UserId string
+}
+
+type CancelSellCommand struct {
+  UserId string
+}
+
+type SetBuyAmountCommand struct {
+  UserId string
+  StockSymbol string
+  Amount int
+}
+
+type CancelSetBuyCommand struct {
+  UserId string
+  StockSymbol string
+}
+
+type SetBuyTriggerCommand struct {
+  UserId string
+  StockSymbol string
+  Amount int
+}
+
+type SetSellAmountCommand struct {
+  UserId string
+  StockSymbol string
+  Amount int
+}
+
+type CancelSetSellCommand struct {
+  UserId string
+  StockSymbol string
+}
+
+type SetSellTriggerCommand struct {
+  UserId string
+  StockSymbol string
+  Amount int
+}
+
+type DumplogCommand struct {
+  UserId string
+  StockSymbol string
+}
+
+type DisplaySummary struct {
+  UserId string
+}
+
 func HelloHandler(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusOK)
   io.WriteString(w, "Hello World!")
@@ -19,71 +101,103 @@ func HelloHandler(w http.ResponseWriter, r *http.Request) {
 
 func PostAddHandler(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusOK)
+  
+  var payload AddCommand 
+  body, _ := ioutil.ReadAll(r.Body)
+  err := json.Unmarshal(body, &payload)
+  
+  if err != nil {
+    panic(err)
+  }
+  defer r.Body.Close()
+  io.WriteString(w, payload.UserId)
 }
 
 func GetQuoteHandler(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusCreated)
+  io.WriteString(w, "Get Quote!") 
 }
 
 func PostBuyHandler(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusCreated)
+  var payload BuyCommand 
+  body, _ := ioutil.ReadAll(r.Body)
+  err := json.Unmarshal(body, &payload)
+  
+  if err != nil {
+    panic(err)
+  }
+  defer r.Body.Close()
+  transact(1,payload.UserId, money.Money(payload.Amount), payload.StockSymbol)
+  io.WriteString(w, payload.UserId)
 }
 
 // commit
 func PutBuyHandler(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusOK)
+  io.WriteString(w, "Commit buy!")   
 }
 
 // cancel
 func DeleteBuyHandler(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusOK)
+  io.WriteString(w, "Cancel Buy!")     
 }
 
 func PostSellHandler(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusCreated)
+  io.WriteString(w, "Sell!")
 }
 
 // commit
 func PutSellHandler(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusOK)
+  io.WriteString(w, "Commit Sell!")
 }
 
 // cancel
 func DeleteSellHandler(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusOK)
+  io.WriteString(w, "Cancel Sell!")
 }
 
 //SetBuyAmount
 func PostBuyTriggerHandler(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusCreated)
+  io.WriteString(w, "Set Buy Amount!")
 }
 
 //SetBuyTrigger
 func PutBuyTriggerHandler(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusOK)
+  io.WriteString(w, "Set Buy Trigger!")
 }
 
 func DeleteBuyTriggerHandler(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusOK)
+  io.WriteString(w, "Cancel Buy Trigger!")
 }
 
 //SetSellAmount
 func PostSellTriggerHandler(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusCreated)
+  io.WriteString(w, "Set sell amount!")
 }
 
 //SetSellTrigger
 func PutSellTriggerHandler(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusOK)
+  io.WriteString(w, "Set Sell Trigger!")
 }
-
 
 func DeleteSellTriggerHandler(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusOK)
+  io.WriteString(w, "Cancel sell trigger!")
 }
 
 func PostDumpLogHandler(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusCreated)
+  io.WriteString(w, "Dump logger!")
 }
 
 func GetDisplaySummaryHandler(w http.ResponseWriter, r *http.Request) {
@@ -119,54 +233,16 @@ func main() {
   bytes, _ := xml.Marshal(l)
   fmt.Println(string(bytes))
 
-  fmt.Println(database.AddFunds("user_a", 100000))
-  fmt.Println("user_a created")
-
-  fmt.Println(trigger.SetBuyAmount("user_a", "ABC", 10000))
-  fmt.Println(trigger.SetBuyTrigger("user_a", "ABC", 5000))
-
-  fmt.Println("user_a funds / stocks")
-  fmt.Println(database.CheckFunds("user_a"))
-  fmt.Println(database.CheckStock("user_a", "ABC"))
-
-  trigger.OnQuoteUpdate("DEF", 2000)
-  trigger.OnQuoteUpdate("ABC", 5001)
-  fmt.Println("user_a funds / stocks")
-  fmt.Println(database.CheckFunds("user_a"))
-  fmt.Println(database.CheckStock("user_a", "ABC"))
-
-  trigger.OnQuoteUpdate("ABC", 2501)
-  fmt.Println("user_a funds / stocks")
-  fmt.Println(database.CheckFunds("user_a"))
-  fmt.Println(database.CheckStock("user_a", "ABC"))
-
-  trigger.OnQuoteUpdate("ABC", 100)
-  fmt.Println("user_a funds / stocks")
-  fmt.Println(database.CheckFunds("user_a"))
-  fmt.Println(database.CheckStock("user_a", "ABC"))
-
-  fmt.Println(trigger.SetSellAmount("user_a", "ABC", 10000))
-  fmt.Println(trigger.SetSellTrigger("user_a", "ABC", 5000))
-  fmt.Println("user_a funds / stocks")
-  fmt.Println(database.CheckFunds("user_a"))
-  fmt.Println(database.CheckStock("user_a", "ABC"))
-
-  trigger.OnQuoteUpdate("ABC", 5001)
-  fmt.Println("user_a funds / stocks")
-  fmt.Println(database.CheckFunds("user_a"))
-  fmt.Println(database.CheckStock("user_a", "ABC"))
-
-
   r := mux.NewRouter()
   r.HandleFunc("/", HelloHandler)
   r.Path("/users").Methods("POST").HandlerFunc(PostAddHandler);
   r.Path("/stocks/{stockSym}").Methods("GET").HandlerFunc(GetQuoteHandler);
   r.Path("/stocks/{stockSym}/buy").Methods("POST").HandlerFunc(PostBuyHandler);
-  r.Path("/stocks/{stockSym}/buy").Methods("PUT").HandlerFunc(PutBuyHandler);
-  r.Path("/stocks/{stockSym}/buy").Methods("DELETE").HandlerFunc(DeleteBuyHandler);
+  r.Path("/stocks/buy").Methods("PUT").HandlerFunc(PutBuyHandler);
+  r.Path("/stocks/buy").Methods("DELETE").HandlerFunc(DeleteBuyHandler);
   r.Path("/stocks/{stockSym}/sell").Methods("POST").HandlerFunc(PostSellHandler);
-  r.Path("/stocks/{stockSym}/sell").Methods("PUT").HandlerFunc(PutSellHandler);
-  r.Path("/stocks/{stockSym}/sell").Methods("DELETE").HandlerFunc(DeleteSellHandler);
+  r.Path("/stocks/sell").Methods("PUT").HandlerFunc(PutSellHandler);
+  r.Path("/stocks/sell").Methods("DELETE").HandlerFunc(DeleteSellHandler);
   r.Path("/triggers/{stockSym}/buy").Methods("POST").HandlerFunc(PostBuyTriggerHandler);
   r.Path("/triggers/{stockSym}/buy").Methods("PUT").HandlerFunc(PutBuyTriggerHandler);
   r.Path("/triggers/{stockSym}/buy").Methods("DELETE").HandlerFunc(DeleteBuyTriggerHandler);
