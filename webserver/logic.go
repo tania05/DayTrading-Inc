@@ -43,7 +43,7 @@ func addFunds(user string, amount money.Money){
 }
 
 func transact(bs int, user string, amount money.Money, stock string) {
-	price := getQuote(user, stock)
+	price := money.Money(45)
 	stocknum := int((amount/price))
 	cost := money.Money(stocknum * int(price))
 

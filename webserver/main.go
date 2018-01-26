@@ -9,17 +9,110 @@ import (
   "fmt"
   "log"
   "webserver/internal/logger"
-  "webserver/internal/database"
+  "webserver/internal/money"
+  // "webserver/internal/database"
+  // "bytes"
+  "io/ioutil"
 )
+
+type AddCommand struct {
+  UserId string
+  Amount int
+}
+
+type QuoteCommand struct {
+  UserId string
+  StockSymbol string
+ }
+
+type BuyCommand struct {
+  UserId string
+  StockSymbol string
+  Amount int
+}
+
+type CommitBuyCommand struct {
+  UserId string
+}
+
+type CancelBuyCommand struct {
+  UserId string
+}
+
+type SellCommand struct {
+  UserId string
+  StockSymbol string
+  Amount int
+}
+
+type CommitSellCommand struct {
+  UserId string
+}
+
+type CancelSellCommand struct {
+  UserId string
+}
+
+type SetBuyAmountCommand struct {
+  UserId string
+  StockSymbol string
+  Amount int
+}
+
+type CancelSetBuyCommand struct {
+  UserId string
+  StockSymbol string
+}
+
+type SetBuyTriggerCommand struct {
+  UserId string
+  StockSymbol string
+  Amount int
+}
+
+type SetSellAmountCommand struct {
+  UserId string
+  StockSymbol string
+  Amount int
+}
+
+type CancelSetSellCommand struct {
+  UserId string
+  StockSymbol string
+}
+
+type SetSellTriggerCommand struct {
+  UserId string
+  StockSymbol string
+  Amount int
+}
+
+type DumplogCommand struct {
+  UserId string
+  StockSymbol string
+}
+
+type DisplaySummary struct {
+  UserId string
+}
+
 func HelloHandler(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusOK)
   io.WriteString(w, "Hello World!")
 }
 
 func PostAddHandler(w http.ResponseWriter, r *http.Request) {
-
   w.WriteHeader(http.StatusOK)
-  io.WriteString(w, "Add Post!")  
+  
+  var payload AddCommand 
+  body, _ := ioutil.ReadAll(r.Body)
+  err := json.Unmarshal(body, &payload)
+  
+  if err != nil {
+    panic(err)
+  }
+  defer r.Body.Close()
+  io.WriteString(w, payload.UserId)
 }
 
 func GetQuoteHandler(w http.ResponseWriter, r *http.Request) {
@@ -29,7 +122,16 @@ func GetQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 func PostBuyHandler(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusCreated)
-  io.WriteString(w, "Buy!") 
+  var payload BuyCommand 
+  body, _ := ioutil.ReadAll(r.Body)
+  err := json.Unmarshal(body, &payload)
+  
+  if err != nil {
+    panic(err)
+  }
+  defer r.Body.Close()
+  transact(1,payload.UserId, money.Money(payload.Amount), payload.StockSymbol)
+  io.WriteString(w, payload.UserId)
 }
 
 // commit
@@ -133,21 +235,21 @@ func main() {
   bytes, _ := xml.Marshal(l)
   fmt.Println(string(bytes))
 
-  fmt.Println(database.AddFunds("abcdef", 100))
-  t, _ := database.AllocateFunds("abcdef", 10, "Q", 4)
-  fmt.Println(t)
-  fmt.Println(database.CheckFunds("abcdef"))
-  fmt.Println(database.CheckStock("abcdef", "Q"))
-  database.Commit(t)
-  fmt.Println(database.CheckFunds("abcdef"))
-  fmt.Println(database.CheckStock("abcdef", "Q"))
+  // fmt.Println(database.AddFunds("abcdef", 100))
+  // t, _ := database.AllocateFunds("abcdef", 10, "Q", 4)
+  // fmt.Println(t)
+  // fmt.Println(database.CheckFunds("abcdef"))
+  // fmt.Println(database.CheckStock("abcdef", "Q"))
+  // database.Commit(t)
+  // fmt.Println(database.CheckFunds("abcdef"))
+  // fmt.Println(database.CheckStock("abcdef", "Q"))
 
-  addFunds("adad", 55000)
-  fmt.Println(database.CheckFunds("adad"))
-  transact(1, "adad", 50, "TTT")
-  commitTransact(1, "adad")
-  fmt.Println(database.CheckFunds("adad"))
-  fmt.Println(database.CheckStock("adad","TTT"))
+  // addFunds("adad", 55000)
+  // fmt.Println(database.CheckFunds("adad"))
+  // transact(1, "adad", 50, "TTT")
+  // commitTransact(1, "adad")
+  // fmt.Println(database.CheckFunds("adad"))
+  // fmt.Println(database.CheckStock("adad","TTT"))
 
   r := mux.NewRouter()
   r.HandleFunc("/", HelloHandler)
