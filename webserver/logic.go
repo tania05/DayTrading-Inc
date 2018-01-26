@@ -33,7 +33,7 @@ func getQuote(user string, stock string) money.Money {
 	buff, _ := ioutil.ReadAll(conn)
 	log.Printf("Recieve: %s", buff)
 	val, err := strconv.Atoi(strings.Replace(strings.Split(string(buff),",")[0],".","",-1))
-	fmt.Println(val)
+	//fmt.Println(val)
 	return money.Money(val)
 }
 
@@ -48,22 +48,31 @@ func transact(bs int, user string, amount money.Money, stock string) {
 	cost := money.Money(stocknum * int(price))
 
 	if bs == 1 {
-		t, _ := database.AllocateFunds(user, cost, stock, stocknum)
+		t, err := database.AllocateFunds(user, cost, stock, stocknum)
+		if err != nil {
+			panic(err)
+		}
 		onestack = t
-		fmt.Println("buy work?")
+		fmt.Println("buy")
 		//err := pushPendingBuy(cost, stocknum, stock, user)
 	} else {
 		t, _ := database.AllocateStocks(user, stock, stocknum, cost)
 		onestack = t
-		fmt.Println("sell work?")
+		fmt.Println("sell")
 	}
 }
 
 func commitTransact(bs int, user string){
+	//fmt.Println("buy/sell confirm")
+
 	if bs == 1 {
 		database.Commit(onestack)
+		fmt.Println("buy confirm")
+
 	} else {
 		database.Commit(onestack)
+		fmt.Println("sell confirm")
+
 	}
 
 }

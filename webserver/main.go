@@ -10,7 +10,7 @@ import (
   "log"
   "webserver/internal/logger"
   "webserver/internal/money"
-  // "webserver/internal/database"
+  "webserver/internal/database"
   // "bytes"
   "io/ioutil"
 )
@@ -103,7 +103,6 @@ func HelloHandler(w http.ResponseWriter, r *http.Request) {
 
 func PostAddHandler(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusOK)
-  
   var payload AddCommand 
   body, _ := ioutil.ReadAll(r.Body)
   err := json.Unmarshal(body, &payload)
@@ -112,6 +111,8 @@ func PostAddHandler(w http.ResponseWriter, r *http.Request) {
     panic(err)
   }
   defer r.Body.Close()
+  addFunds(payload.UserId, money.Money(payload.Amount))
+  fmt.Println(database.CheckFunds(payload.UserId))
   io.WriteString(w, payload.UserId)
 }
 
@@ -130,37 +131,90 @@ func PostBuyHandler(w http.ResponseWriter, r *http.Request) {
     panic(err)
   }
   defer r.Body.Close()
-  transact(1,payload.UserId, money.Money(payload.Amount), payload.StockSymbol)
-  io.WriteString(w, payload.UserId)
+  transact(1,payload.UserId, money.Money(payload.Amount), payload.StockSymbol)  
+  io.WriteString(w, "Buy Command!")
+  fmt.Println(database.CheckFunds(payload.UserId))
+  fmt.Println(database.CheckStock(payload.UserId, payload.StockSymbol))
 }
 
 // commit
 func PutBuyHandler(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusOK)
-  io.WriteString(w, "Commit buy!")   
+  var payload CommitBuyCommand 
+  body, _ := ioutil.ReadAll(r.Body)
+  err := json.Unmarshal(body, &payload)
+  
+  if err != nil {
+    panic(err)
+  }
+  defer r.Body.Close()
+  commitTransact(1,payload.UserId)
+  io.WriteString(w, "Commit buy!")
+  fmt.Println(database.CheckFunds(payload.UserId))
 }
 
 // cancel
 func DeleteBuyHandler(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusOK)
-  io.WriteString(w, "Cancel Buy!")     
+  var payload CancelBuyCommand 
+  body, _ := ioutil.ReadAll(r.Body)
+  err := json.Unmarshal(body, &payload)
+  
+  if err != nil {
+    panic(err)
+  }
+  defer r.Body.Close()
+  commitTransact(1,payload.UserId)
+  io.WriteString(w, "Cancel Buy!")
+  fmt.Println(database.CheckFunds(payload.UserId))
 }
 
 func PostSellHandler(w http.ResponseWriter, r *http.Request) {
-  w.WriteHeader(http.StatusCreated)
+  w.WriteHeader(http.StatusOK)
+  var payload SellCommand 
+  body, _ := ioutil.ReadAll(r.Body)
+  err := json.Unmarshal(body, &payload)
+  
+  if err != nil {
+    panic(err)
+  }
+  defer r.Body.Close()
+  transact(0,payload.UserId, money.Money(payload.Amount), payload.StockSymbol)
   io.WriteString(w, "Sell!")
+  fmt.Println(database.CheckFunds(payload.UserId))
+  fmt.Println(database.CheckStock(payload.UserId, payload.StockSymbol))
 }
 
 // commit
 func PutSellHandler(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusOK)
+  var payload CommitSellCommand 
+  body, _ := ioutil.ReadAll(r.Body)
+  err := json.Unmarshal(body, &payload)
+  
+  if err != nil {
+    panic(err)
+  }
+  defer r.Body.Close()
+  commitTransact(0,payload.UserId)
   io.WriteString(w, "Commit Sell!")
+  fmt.Println(database.CheckFunds(payload.UserId))
 }
 
 // cancel
 func DeleteSellHandler(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusOK)
+  var payload CancelSellCommand 
+  body, _ := ioutil.ReadAll(r.Body)
+  err := json.Unmarshal(body, &payload)
+  
+  if err != nil {
+    panic(err)
+  }
+  defer r.Body.Close()
+  commitTransact(0,payload.UserId)
   io.WriteString(w, "Cancel Sell!")
+  fmt.Println(database.CheckFunds(payload.UserId))
 }
 
 //SetBuyAmount
