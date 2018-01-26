@@ -10,6 +10,7 @@ import (
   "log"
   "webserver/internal/logger"
   "webserver/internal/database"
+  "webserver/internal/trigger"
 )
 func HelloHandler(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusOK)
@@ -118,14 +119,43 @@ func main() {
   bytes, _ := xml.Marshal(l)
   fmt.Println(string(bytes))
 
-  fmt.Println(database.AddFunds("abcdef", 100))
-  t, _ := database.AllocateFunds("abcdef", 10, "Q", 4)
-  fmt.Println(t)
-  fmt.Println(database.CheckFunds("abcdef"))
-  fmt.Println(database.CheckStock("abcdef", "Q"))
-  database.Commit(t)
-  fmt.Println(database.CheckFunds("abcdef"))
-  fmt.Println(database.CheckStock("abcdef", "Q"))
+  fmt.Println(database.AddFunds("user_a", 100000))
+  fmt.Println("user_a created")
+
+  fmt.Println(trigger.SetBuyAmount("user_a", "ABC", 10000))
+  fmt.Println(trigger.SetBuyTrigger("user_a", "ABC", 5000))
+
+  fmt.Println("user_a funds / stocks")
+  fmt.Println(database.CheckFunds("user_a"))
+  fmt.Println(database.CheckStock("user_a", "ABC"))
+
+  trigger.OnQuoteUpdate("DEF", 2000)
+  trigger.OnQuoteUpdate("ABC", 5001)
+  fmt.Println("user_a funds / stocks")
+  fmt.Println(database.CheckFunds("user_a"))
+  fmt.Println(database.CheckStock("user_a", "ABC"))
+
+  trigger.OnQuoteUpdate("ABC", 2501)
+  fmt.Println("user_a funds / stocks")
+  fmt.Println(database.CheckFunds("user_a"))
+  fmt.Println(database.CheckStock("user_a", "ABC"))
+
+  trigger.OnQuoteUpdate("ABC", 100)
+  fmt.Println("user_a funds / stocks")
+  fmt.Println(database.CheckFunds("user_a"))
+  fmt.Println(database.CheckStock("user_a", "ABC"))
+
+  fmt.Println(trigger.SetSellAmount("user_a", "ABC", 10000))
+  fmt.Println(trigger.SetSellTrigger("user_a", "ABC", 5000))
+  fmt.Println("user_a funds / stocks")
+  fmt.Println(database.CheckFunds("user_a"))
+  fmt.Println(database.CheckStock("user_a", "ABC"))
+
+  trigger.OnQuoteUpdate("ABC", 5001)
+  fmt.Println("user_a funds / stocks")
+  fmt.Println(database.CheckFunds("user_a"))
+  fmt.Println(database.CheckStock("user_a", "ABC"))
+
 
   r := mux.NewRouter()
   r.HandleFunc("/", HelloHandler)
