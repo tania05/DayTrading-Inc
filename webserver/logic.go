@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"strconv"
+	"time"
 	"webserver/internal/database"
 	"webserver/internal/money"
+	"webserver/internal/logger"
 	"strings"
 )
 
@@ -32,7 +34,20 @@ func getQuote(user string, stock string) money.Money {
 
 	buff, _ := ioutil.ReadAll(conn)
 	log.Printf("Recieve: %s", buff)
+
+	f := strings.Split(string(buff), ",")
+	f3, _:= strconv.Atoi(f[3])
 	val, err := strconv.Atoi(strings.Replace(strings.Split(string(buff),",")[0],".","",-1))
+
+	logger.Log(logger.QuoteServerLog{
+		Timestamp: time.Now().Unix(),
+		Server: "ts1",
+		TransactionNum: 69,
+		QuoteServerTime: int64(f3),
+		Username: user,
+		StockSymbol: stock,
+		Price: money.Money(val),
+		Cryptokey: f[4]})
 	fmt.Println(val)
 	return money.Money(val)
 }
@@ -40,6 +55,13 @@ func getQuote(user string, stock string) money.Money {
 func addFunds(user string, amount money.Money){
 	database.AddFunds(user, amount)
 	fmt.Println("add work?")
+	logger.Log(logger.UserCommandLog{
+		Command: logger.Add,
+		TransactionNum: 69,
+		Username: user,
+		Server: "ts1",
+		Timestamp: time.Now().Unix(),
+		Funds: amount})
 }
 
 func transact(bs int, user string, amount money.Money, stock string) {
