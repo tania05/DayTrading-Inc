@@ -19,7 +19,7 @@ const port = 4441
 var buystack []database.Transaction
 var sellstack []database.Transaction
 
-func getQuote(user string, stock string) money.Money {
+func getQuote(user string, stock string, transactionNum int64) money.Money {
 	addr := (domain + ":" + strconv.Itoa(port))
 
 	conn, err := net.Dial("tcp", addr)
@@ -53,7 +53,7 @@ func getQuote(user string, stock string) money.Money {
 	return money.Money(val)
 }
 
-func addFunds(user string, amount money.Money){
+func addFunds(user string, amount money.Money, transactionNum int64){
 	database.AddFunds(user, amount)
 	fmt.Println("add work?")
 	logger.Log(logger.UserCommandLog{
@@ -65,7 +65,7 @@ func addFunds(user string, amount money.Money){
 		Funds: amount})
 }
 
-func transact(bs int, user string, amount money.Money, stock string) {
+func transact(bs int, user string, amount money.Money, stock string, transactionNum int64) {
 	price := money.Money(45)
 	stocknum := int((amount/price))
 	cost := money.Money(stocknum * int(price))
@@ -85,7 +85,7 @@ func transact(bs int, user string, amount money.Money, stock string) {
 	}
 }
 
-func commitTransact(bs int, user string){
+func commitTransact(bs int, user string, transactionNum int64){
 	//fmt.Println("buy/sell confirm")
 
 	if bs == 1 && len(buystack) > 0{
@@ -97,7 +97,7 @@ func commitTransact(bs int, user string){
 	}
 }
 
-func cancelTransact(bs int, user string){
+func cancelTransact(bs int, user string, transactionNum int64){
 	if bs == 1 && len(buystack) > 0 {
 		database.Cancel(popback(buystack))
 	} else if len(sellstack) > 0{

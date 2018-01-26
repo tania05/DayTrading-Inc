@@ -130,7 +130,7 @@ func PostAddHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	defer r.Body.Close()
-	addFunds(payload.UserId, money.Money(payload.Amount))
+	addFunds(payload.UserId, money.Money(payload.Amount), payload.TransactionNum)
 	fmt.Println(database.CheckFunds(payload.UserId))
 	io.WriteString(w, payload.UserId)
 }
@@ -150,7 +150,7 @@ func PostBuyHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	defer r.Body.Close()
-	transact(1, payload.UserId, money.Money(payload.Amount), payload.StockSymbol)
+	transact(1, payload.UserId, money.Money(payload.Amount), payload.StockSymbol, payload.TransactionNum)
 	io.WriteString(w, "Buy Command!")
 	fmt.Println(database.CheckFunds(payload.UserId))
 	fmt.Println(database.CheckStock(payload.UserId, payload.StockSymbol))
@@ -167,7 +167,7 @@ func PutBuyHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	defer r.Body.Close()
-	commitTransact(1, payload.UserId)
+	commitTransact(1, payload.UserId, payload.TransactionNum)
 	io.WriteString(w, "Commit buy!")
 	fmt.Println(database.CheckFunds(payload.UserId))
 }
@@ -183,7 +183,7 @@ func DeleteBuyHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	defer r.Body.Close()
-	commitTransact(1, payload.UserId)
+	cancelTransact(1, payload.UserId, payload.TransactionNum)
 	io.WriteString(w, "Cancel Buy!")
 	fmt.Println(database.CheckFunds(payload.UserId))
 }
@@ -198,7 +198,7 @@ func PostSellHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	defer r.Body.Close()
-	transact(0, payload.UserId, money.Money(payload.Amount), payload.StockSymbol)
+	transact(0, payload.UserId, money.Money(payload.Amount), payload.StockSymbol, payload.TransactionNum)
 	io.WriteString(w, "Sell!")
 	fmt.Println(database.CheckFunds(payload.UserId))
 	fmt.Println(database.CheckStock(payload.UserId, payload.StockSymbol))
@@ -215,7 +215,7 @@ func PutSellHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	defer r.Body.Close()
-	commitTransact(0, payload.UserId)
+	commitTransact(0, payload.UserId, payload.TransactionNum)
 	io.WriteString(w, "Commit Sell!")
 	fmt.Println(database.CheckFunds(payload.UserId))
 }
@@ -231,7 +231,7 @@ func DeleteSellHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	defer r.Body.Close()
-	commitTransact(0, payload.UserId)
+	cancelTransact(0, payload.UserId, payload.TransactionNum)
 	io.WriteString(w, "Cancel Sell!")
 	fmt.Println(database.CheckFunds(payload.UserId))
 }
