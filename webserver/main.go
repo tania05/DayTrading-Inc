@@ -9,6 +9,7 @@ import (
   "fmt"
   "log"
   "webserver/internal/logger"
+  "webserver/internal/database"
 )
 func HelloHandler(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusOK)
@@ -116,6 +117,8 @@ func main() {
 
   bytes, _ := xml.Marshal(l)
   fmt.Println(string(bytes))
+
+  fmt.Println(database.AddFunds("abcdef", 100))
 
   r := mux.NewRouter()
   r.HandleFunc("/", HelloHandler)
