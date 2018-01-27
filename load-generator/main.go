@@ -152,7 +152,7 @@ func (command AddCommand) request() string {
 }
 
 func (command QuoteCommand) request() string {
-  return getRequest("/users")
+  return postRequest("/stocks/"+command.StockSymbol+"/quote", post, command)
 }
 
 func (command BuyCommand) request() string {

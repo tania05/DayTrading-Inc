@@ -88,23 +88,23 @@ func (hold MoneyHolding) receive(ctx *context.Context) error {
 	return nil
 }
 
-func AddFunds(userId string, amount money.Money, ctx *context.Context) (int64, error) {
-  tid := NewTransactionId()
-  receivable := MoneyHolding{UserId: userId, Amount: amount}
+func AddFunds(ctx *context.Context, amount money.Money) error {
+  receivable := MoneyHolding{UserId: ctx.UserId, Amount: amount}
   err := receivable.receive(ctx)
-  return tid, err
+  return err
 }
 
-func CheckFunds(ctx *context.Context, userId string) (money.Money, error) {
-	ctx.Funds = userMap[userId]
-	return userMap[userId], nil
+func CheckFunds(ctx *context.Context) (money.Money, error) {
+	ctx.Funds = userMap[ctx.UserId]
+	return userMap[ctx.UserId], nil
 }
 
-func CheckStock(userId string, stockSymbol string) (int, error) {
-	if stockMap[userId] == nil {
-		stockMap[userId] = make(map[string]int)
+func CheckStock(ctx *context.Context) (int, error) {
+	if stockMap[ctx.UserId] == nil {
+		stockMap[ctx.UserId] = make(map[string]int)
 	}
-	return stockMap[userId][stockSymbol], nil
+	ctx.Funds = userMap[ctx.UserId]
+	return stockMap[ctx.UserId][ctx.StockSymbol], nil
 }
 
 func attemptAllocate(ctx *context.Context, trans Transaction) (Transaction, error) {

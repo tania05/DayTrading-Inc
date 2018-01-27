@@ -10,6 +10,7 @@ import (
 	"webserver/internal/database"
 	"webserver/internal/money"
 	"webserver/internal/logger"
+	"webserver/internal/context"
 	"strings"
 )
 
@@ -19,7 +20,7 @@ const port = 4441
 var buystack []database.Transaction
 var sellstack []database.Transaction
 
-func getQuote(user string, stock string, transactionNum int64) money.Money {
+func getQuote(ctx *context.Context) money.Money {
 	addr := (domain + ":" + strconv.Itoa(port))
 
 	conn, err := net.Dial("tcp", addr)
@@ -27,10 +28,10 @@ func getQuote(user string, stock string, transactionNum int64) money.Money {
 	defer conn.Close()
 
 	if err != nil {
-    panic(err)
+    	panic(err)
 	}
 
-	conn.Write([]byte(stock +","+user))
+	conn.Write([]byte(ctx.StockSymbol +","+ ctx.UserId))
 	conn.Write([]byte("\n"))
 
 	buff, _ := ioutil.ReadAll(conn)
@@ -43,27 +44,27 @@ func getQuote(user string, stock string, transactionNum int64) money.Money {
 	logger.Log(logger.QuoteServerLog{
 		Timestamp: time.Now().UnixNano() / 1e6,
 		Server: "ts0",
-		TransactionNum: 69,
+		TransactionNum: ctx.TransactionNum,
 		QuoteServerTime: int64(f3),
-		Username: user,
-		StockSymbol: stock,
+		Username: ctx.UserId,
+		StockSymbol: ctx.StockSymbol,
 		Price: money.Money(val),
 		Cryptokey: f[4]})
 	fmt.Println(val)
 	return money.Money(val)
 }
 
-func addFunds(user string, amount money.Money) (int64, error) {
-	return database.AddFunds(user, amount)
+func addFunds(ctx *context.Context, amount money.Money ) error {
+	return database.AddFunds(ctx, amount)
 }
 
-func transact(bs int, user string, amount money.Money, stock string, transactionNum int64) {
+func transact(ctx *context.Context, bs int, amount money.Money) {
 	price := money.Money(45)
 	stocknum := int((amount/price))
 	cost := money.Money(stocknum * int(price))
 
 	if bs == 1 {
-		t, err := database.AllocateFunds(user, cost, stock, stocknum)
+		t, err := database.AllocateFunds(ctx, cost, stocknum)
 		if err != nil {
 			panic(err)
 		}
@@ -71,29 +72,29 @@ func transact(bs int, user string, amount money.Money, stock string, transaction
 		fmt.Println("buy")
 		//err := pushPendingBuy(cost, stocknum, stock, user)
 	} else {
-		t, _ := database.AllocateStocks(user, stock, stocknum, cost)
+		t, _ := database.AllocateStocks(ctx, stocknum, cost)
 		sellstack = append(sellstack, t)
 		fmt.Println("sell")
 	}
 }
 
-func commitTransact(bs int, user string, transactionNum int64){
+func commitTransact(ctx *context.Context, bs int){
 	//fmt.Println("buy/sell confirm")
 
 	if bs == 1 && len(buystack) > 0{
-		database.Commit(popback(buystack))
+		database.Commit(ctx, popback(buystack))
 		fmt.Println("buy confirm")
 	} else if len(sellstack) > 0{
-		database.Commit(popback(sellstack))
+		database.Commit(ctx, popback(sellstack))
 		fmt.Println("sell confirm")
 	}
 }
 
-func cancelTransact(bs int, user string, transactionNum int64){
+func cancelTransact(ctx *context.Context, bs int){
 	if bs == 1 && len(buystack) > 0 {
-		database.Cancel(popback(buystack))
+		database.Cancel(ctx, popback(buystack))
 	} else if len(sellstack) > 0{
-		database.Cancel(popback(sellstack))
+		database.Cancel(ctx, popback(sellstack))
 	}
 }
 

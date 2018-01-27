@@ -5,10 +5,9 @@ import (
   "io"
   "encoding/json"
   "github.com/gorilla/mux"
-  "fmt"
+//   "fmt"
   "log"
   "webserver/internal/money"
-  "webserver/internal/database"
   "webserver/internal/trigger"
   "webserver/internal/logger"
   "webserver/internal/context"
@@ -123,7 +122,6 @@ func HelloHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func PostAddHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
 	var payload AddCommand
 	body, _ := ioutil.ReadAll(r.Body)
 	err := json.Unmarshal(body, &payload)
@@ -132,24 +130,35 @@ func PostAddHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	defer r.Body.Close()
-  tid, err := addFunds(payload.UserId, money.Money(payload.Amount))
-  logger.LogCommand(logger.Add, userId, tid)
+	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, "", logger.Add)
+  	err = addFunds(ctx, money.Money(payload.Amount))
+	if err != nil {
+		w.WriteHeader(400)	
+	}
 
-  if err != nil {
-    logger.LogError(err, logger.Add)
-  }
-
-	fmt.Println(database.CheckFunds(payload.UserId))
+	w.WriteHeader(http.StatusOK)
+	// fmt.Println(database.CheckFunds(ctx, payload.UserId))
 	io.WriteString(w, payload.UserId)
 }
 
 func GetQuoteHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusCreated)
-	io.WriteString(w, "Get Quote!")
+	var payload QuoteCommand
+	body, _ := ioutil.ReadAll(r.Body)
+	err := json.Unmarshal(body, &payload)
+
+	if err != nil {
+		panic(err)
+	}
+	defer r.Body.Close()
+
+	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, payload.StockSymbol, logger.Quote)
+	getQuote(ctx)
+	w.WriteHeader(http.StatusCreated)	
+	io.WriteString(w, "Get Quote!\n")
+	// io.WriteString(w, money)
 }
 
 func PostBuyHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusCreated)
 	var payload BuyCommand
 	body, _ := ioutil.ReadAll(r.Body)
 	err := json.Unmarshal(body, &payload)
@@ -158,15 +167,16 @@ func PostBuyHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	defer r.Body.Close()
-	transact(1, payload.UserId, money.Money(payload.Amount), payload.StockSymbol, payload.TransactionNum)
+	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, payload.StockSymbol, logger.Buy)
+	transact(ctx, 1, money.Money(payload.Amount))
+	w.WriteHeader(http.StatusCreated)
 	io.WriteString(w, "Buy Command!")
-	fmt.Println(database.CheckFunds(payload.UserId))
-	fmt.Println(database.CheckStock(payload.UserId, payload.StockSymbol))
+	// fmt.Println(database.CheckFunds(payload.UserId))
+	// fmt.Println(database.CheckStock(payload.UserId, payload.StockSymbol))
 }
 
 // commit
 func PutBuyHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
 	var payload CommitBuyCommand
 	body, _ := ioutil.ReadAll(r.Body)
 	err := json.Unmarshal(body, &payload)
@@ -175,14 +185,15 @@ func PutBuyHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	defer r.Body.Close()
-	commitTransact(1, payload.UserId, payload.TransactionNum)
+	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, "", logger.CommitBuy)	
+	commitTransact(ctx, 1)
 	io.WriteString(w, "Commit buy!")
-	fmt.Println(database.CheckFunds(payload.UserId))
+	w.WriteHeader(http.StatusOK)	
+	// fmt.Println(database.CheckFunds(payload.UserId))
 }
 
 // cancel
 func DeleteBuyHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
 	var payload CancelBuyCommand
 	body, _ := ioutil.ReadAll(r.Body)
 	err := json.Unmarshal(body, &payload)
@@ -191,13 +202,14 @@ func DeleteBuyHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	defer r.Body.Close()
-	cancelTransact(1, payload.UserId, payload.TransactionNum)
+	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, "", logger.CancelBuy)		
+	cancelTransact(ctx,1)
 	io.WriteString(w, "Cancel Buy!")
-	fmt.Println(database.CheckFunds(payload.UserId))
+	// fmt.Println(database.CheckFunds(payload.UserId))
+	w.WriteHeader(http.StatusOK)	
 }
 
 func PostSellHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
 	var payload SellCommand
 	body, _ := ioutil.ReadAll(r.Body)
 	err := json.Unmarshal(body, &payload)
@@ -206,10 +218,12 @@ func PostSellHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	defer r.Body.Close()
-	transact(0, payload.UserId, money.Money(payload.Amount), payload.StockSymbol, payload.TransactionNum)
+	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, payload.StockSymbol, logger.Sell)			
+	transact(ctx, 0, money.Money(payload.Amount))
 	io.WriteString(w, "Sell!")
-	fmt.Println(database.CheckFunds(payload.UserId))
-	fmt.Println(database.CheckStock(payload.UserId, payload.StockSymbol))
+	w.WriteHeader(http.StatusOK)	
+	// fmt.Println(database.CheckFunds(payload.UserId))
+	// fmt.Println(database.CheckStock(payload.UserId, payload.StockSymbol))
 }
 
 // commit
@@ -223,14 +237,14 @@ func PutSellHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	defer r.Body.Close()
-	commitTransact(0, payload.UserId, payload.TransactionNum)
+	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, "", logger.CommitSell)	
+	commitTransact(ctx, 0)
 	io.WriteString(w, "Commit Sell!")
-	fmt.Println(database.CheckFunds(payload.UserId))
+	// fmt.Println(database.CheckFunds(payload.UserId))
 }
 
 // cancel
 func DeleteSellHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
 	var payload CancelSellCommand
 	body, _ := ioutil.ReadAll(r.Body)
 	err := json.Unmarshal(body, &payload)
@@ -239,14 +253,15 @@ func DeleteSellHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	defer r.Body.Close()
-	cancelTransact(0, payload.UserId, payload.TransactionNum)
+	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, "", logger.CancelSell)		
+	cancelTransact(ctx,0)
 	io.WriteString(w, "Cancel Sell!")
-	fmt.Println(database.CheckFunds(payload.UserId))
+	w.WriteHeader(http.StatusOK)
+	// fmt.Println(database.CheckFunds(payload.UserId))
 }
 
 //SetBuyAmount
 func PostBuyTriggerHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusCreated)
 	var payload SetBuyAmountCommand
 	body, _ := ioutil.ReadAll(r.Body)
 	err := json.Unmarshal(body, &payload)
@@ -255,13 +270,14 @@ func PostBuyTriggerHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	defer r.Body.Close()
-	trigger.SetBuyAmount(payload.UserId, payload.StockSymbol, money.Money(payload.Amount))
+	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, payload.StockSymbol, logger.SetBuyAmount)			
+	trigger.SetBuyAmount(ctx, money.Money(payload.Amount))
+	w.WriteHeader(http.StatusOK)
 	io.WriteString(w, "Set Buy Amount!")
 }
 
 //SetBuyTrigger
 func PutBuyTriggerHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
 	var payload SetBuyTriggerCommand
 	body, _ := ioutil.ReadAll(r.Body)
 	err := json.Unmarshal(body, &payload)
@@ -270,12 +286,14 @@ func PutBuyTriggerHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	defer r.Body.Close()
-	trigger.SetBuyTrigger(payload.UserId, payload.StockSymbol, money.Money(payload.Amount))
+
+	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, payload.StockSymbol, logger.SetBuyTrigger)			
+	trigger.SetBuyTrigger(ctx, money.Money(payload.Amount))
+	w.WriteHeader(http.StatusOK)	
 	io.WriteString(w, "Set Buy Trigger!")
 }
 
 func DeleteBuyTriggerHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
 	var payload CancelSetBuyCommand
 	body, _ := ioutil.ReadAll(r.Body)
 	err := json.Unmarshal(body, &payload)
@@ -283,7 +301,10 @@ func DeleteBuyTriggerHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	defer r.Body.Close()
-	trigger.CancelSetBuy(payload.UserId, payload.StockSymbol)
+
+	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, payload.StockSymbol, logger.CancelSetBuy)	
+	trigger.CancelSetBuy(ctx)
+	w.WriteHeader(http.StatusOK)	
 	io.WriteString(w, "Cancel Buy Trigger!")
 }
 
@@ -298,7 +319,8 @@ func PostSellTriggerHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	defer r.Body.Close()
-	trigger.SetSellAmount(payload.UserId, payload.StockSymbol, money.Money(payload.Amount))
+	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, payload.StockSymbol, logger.SetSellAmount)		
+	trigger.SetSellAmount(ctx, money.Money(payload.Amount))
 	io.WriteString(w, "Set sell amount!")
 }
 
@@ -314,7 +336,9 @@ func PutSellTriggerHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	defer r.Body.Close()
-	trigger.SetSellTrigger(payload.UserId, payload.StockSymbol, money.Money(payload.Amount))
+
+	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, payload.StockSymbol, logger.SetSellTrigger)		
+	trigger.SetSellTrigger(ctx, money.Money(payload.Amount))
 	io.WriteString(w, "Set Sell Trigger!")
 }
 
@@ -327,7 +351,9 @@ func DeleteSellTriggerHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	defer r.Body.Close()
-	trigger.CancelSetSell(payload.UserId, payload.StockSymbol)
+
+	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, payload.StockSymbol, logger.CancelSetSell)		
+	trigger.CancelSetSell(ctx)
 	io.WriteString(w, "Cancel sell trigger!")
 }
 
@@ -363,7 +389,7 @@ func main() {
   r := mux.NewRouter()
   r.HandleFunc("/", HelloHandler)
   r.Path("/users").Methods("POST").HandlerFunc(PostAddHandler);
-  r.Path("/stocks/{stockSym}").Methods("GET").HandlerFunc(GetQuoteHandler);
+  r.Path("/stocks/{stockSym}/quote").Methods("POST").HandlerFunc(GetQuoteHandler);
   r.Path("/stocks/{stockSym}/buy").Methods("POST").HandlerFunc(PostBuyHandler);
   r.Path("/stocks/buy").Methods("PUT").HandlerFunc(PutBuyHandler);
   r.Path("/stocks/buy").Methods("DELETE").HandlerFunc(DeleteBuyHandler);
