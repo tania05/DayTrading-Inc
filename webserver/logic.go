@@ -16,9 +16,10 @@ import (
 const domain = "localhost"
 const port = 4441
 
-var onestack database.Transaction
+var buystack []database.Transaction
+var sellstack []database.Transaction
 
-func getQuote(user string, stock string) money.Money {
+func getQuote(user string, stock string, transactionNum int64) money.Money {
 	addr := (domain + ":" + strconv.Itoa(port))
 
 	conn, err := net.Dial("tcp", addr)
@@ -56,7 +57,7 @@ func addFunds(user string, amount money.Money) (int64, error) {
 	return database.AddFunds(user, amount)
 }
 
-func transact(bs int, user string, amount money.Money, stock string) {
+func transact(bs int, user string, amount money.Money, stock string, transactionNum int64) {
 	price := money.Money(45)
 	stocknum := int((amount/price))
 	cost := money.Money(stocknum * int(price))
@@ -66,69 +67,38 @@ func transact(bs int, user string, amount money.Money, stock string) {
 		if err != nil {
 			panic(err)
 		}
-		onestack = t
+		buystack = append(buystack, t)
 		fmt.Println("buy")
 		//err := pushPendingBuy(cost, stocknum, stock, user)
 	} else {
 		t, _ := database.AllocateStocks(user, stock, stocknum, cost)
-		onestack = t
+		sellstack = append(sellstack, t)
 		fmt.Println("sell")
 	}
 }
 
-func commitTransact(bs int, user string){
+func commitTransact(bs int, user string, transactionNum int64){
 	//fmt.Println("buy/sell confirm")
 
-	if bs == 1 {
-		database.Commit(onestack)
+	if bs == 1 && len(buystack) > 0{
+		database.Commit(popback(buystack))
 		fmt.Println("buy confirm")
-
-	} else {
-		database.Commit(onestack)
+	} else if len(sellstack) > 0{
+		database.Commit(popback(sellstack))
 		fmt.Println("sell confirm")
-
-	}
-
-}
-
-func cancelTransact(bs int, user string){
-	if bs == 1 {
-		database.Cancel(onestack)
-	} else {
-		database.Cancel(onestack)
 	}
 }
 
-// func setTransAmount(bs int, user string, stock string, amount money){
-// 	if bs == 1 {
-// 		err = addBuyAmount(user, stock, amount)
-// 	}
-// 	else {
-// 		err = addSellAmount(user, stock, amount)
-// 	}
-// }
+func cancelTransact(bs int, user string, transactionNum int64){
+	if bs == 1 && len(buystack) > 0 {
+		database.Cancel(popback(buystack))
+	} else if len(sellstack) > 0{
+		database.Cancel(popback(sellstack))
+	}
+}
 
-// func setTransTrigger(bs int, user string, stock string, amount money){
-// 	if bs == 1 {
-// 		err = setBuyTrigger(user, stock, amount)
-// 	}
-// 	else {
-// 		err = setSellTrigger(user, stock, amount)
-// 	}
-// }
-
-// func cancelTransSet(bs int, user string, stock string){
-// 	if bs == 1 {
-// 		err = cancelBuyTrigger(user, stock)
-// 	}
-// 	else {
-// 		err = cancelSellTrigger(user, stock)
-// 	}
-// }
-
-
-// func main() {
-
-// 	c := getQuote("TST,user")
-// 	log.Printf("%s", c)
-// }
+func popback(s []database.Transaction) database.Transaction {
+	x, a := s[len(s)-1], s[:len(s)-1]
+	s = a
+	return x
+}
