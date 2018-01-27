@@ -15,7 +15,18 @@ type Context struct {
 }
 
 func MakeContext(transactionNum int64, userId string, stockSymbol string, command logger.CommandType) *Context {
-  return &Context{TransactionNum: transactionNum, UserId: userId, StockSymbol: stockSymbol, Command: command}
+  ctx := Context{TransactionNum: transactionNum, UserId: userId, StockSymbol: stockSymbol, Command: command}
+  logger.Log(logger.UserCommandLog {
+    StockSymbol: ctx.StockSymbol,
+    Username: ctx.UserId,
+    TransactionNum: ctx.TransactionNum,
+    Command: ctx.Command,
+    Funds: ctx.Funds,
+    Server: "ts0",
+    Timestamp: time.Now().UnixNano() / 1e6,
+  })
+
+  return &ctx
 }
 
 func (context Context) MakeError(message string) logger.ErrorEventLog {

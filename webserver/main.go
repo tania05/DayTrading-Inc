@@ -131,7 +131,7 @@ func PostAddHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, "", logger.Add)
-  	err = addFunds(ctx, money.Money(payload.Amount))
+  err = addFunds(ctx, money.Money(payload.Amount))
 	if err != nil {
 		w.WriteHeader(400)	
 	}
