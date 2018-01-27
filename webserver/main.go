@@ -10,6 +10,8 @@ import (
   "webserver/internal/money"
   "webserver/internal/database"
   "webserver/internal/trigger"
+  "webserver/internal/logger"
+  "webserver/internal/context"
   "io/ioutil"
 )
 
@@ -109,7 +111,13 @@ func PostAddHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	defer r.Body.Close()
-	addFunds(payload.UserId, money.Money(payload.Amount))
+  tid, err := addFunds(payload.UserId, money.Money(payload.Amount))
+  logger.LogCommand(logger.Add, userId, tid)
+
+  if err != nil {
+    logger.LogError(err, logger.Add)
+  }
+
 	fmt.Println(database.CheckFunds(payload.UserId))
 	io.WriteString(w, payload.UserId)
 }

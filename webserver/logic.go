@@ -26,7 +26,7 @@ func getQuote(user string, stock string) money.Money {
 	defer conn.Close()
 
 	if err != nil {
-		log.Fatalln(err)
+    panic(err)
 	}
 
 	conn.Write([]byte(stock +","+user))
@@ -38,10 +38,10 @@ func getQuote(user string, stock string) money.Money {
 	f := strings.Split(string(buff), ",")
 	f3, _:= strconv.Atoi(f[3])
 	val, err := strconv.Atoi(strings.Replace(strings.Split(string(buff),",")[0],".","",-1))
-	
+
 	logger.Log(logger.QuoteServerLog{
 		Timestamp: time.Now().UnixNano() / 1e6,
-		Server: "ts1",
+		Server: "ts0",
 		TransactionNum: 69,
 		QuoteServerTime: int64(f3),
 		Username: user,
@@ -52,16 +52,8 @@ func getQuote(user string, stock string) money.Money {
 	return money.Money(val)
 }
 
-func addFunds(user string, amount money.Money){
-	database.AddFunds(user, amount)
-	fmt.Println("add work?")
-	logger.Log(logger.UserCommandLog{
-		Command: logger.Add,
-		TransactionNum: 69,
-		Username: user,
-		Server: "ts1",
-		Timestamp: time.Now().UnixNano() / 1e6,
-		Funds: amount})
+func addFunds(user string, amount money.Money) (int64, error) {
+	return database.AddFunds(user, amount)
 }
 
 func transact(bs int, user string, amount money.Money, stock string) {

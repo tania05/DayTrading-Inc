@@ -4,10 +4,11 @@ import (
 	"encoding/xml"
 	"os"
 	"webserver/internal/money"
+	"time"
 )
 
 type CommandType string
-type action string
+type Action string
 
 const (
 	Add            CommandType = "ADD"
@@ -29,8 +30,8 @@ const (
 )
 
 const (
-	AddAction    action = "add"
-	RemoveAction action = "remove"
+	AddAction    Action = "add"
+	RemoveAction Action = "remove"
 )
 
 type UserCommandLog struct {
@@ -62,7 +63,7 @@ type AccountTransactionLog struct {
 	Timestamp      int64       `xml:"timestamp"`
 	Server         string      `xml:"server"`
 	TransactionNum int64       `xml:"transactionNum"`
-	Action         action      `xml:"action"`
+	Action         Action      `xml:"action"`
 	Username       string      `xml:"username"`
 	Funds          money.Money `xml:"funds"`
 }
@@ -162,3 +163,15 @@ func Log(msg XmlLoggable) {
 	}
 	logChan <- bytes
 }
+
+func LogCommand(command CommandType, userId string, tid int64) {
+	Log(UserCommandLog{
+		Command: command,
+		TransactionNum: tid,
+		Username: userId,
+		Server: "ts0",
+		Timestamp: time.Now().UnixNano() / 1e6,
+  })
+}
+
+

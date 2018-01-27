@@ -3,13 +3,12 @@ package database
 import (
 	"webserver/internal/money"
   "webserver/internal/logger"
-  "time"
+  "webserver/internal/context"
 )
 
 type Holding interface {
-	pay() error
-	receive() error
-  Id() int64
+	pay(*context.Context) error
+	receive(*context.Context) error
 }
 
 type Transaction struct {
@@ -21,13 +20,11 @@ type StockHolding struct {
 	UserId      string
 	StockSymbol string
 	Amount      int
-  TransactionNum int64
 }
 
 type MoneyHolding struct {
 	UserId string
 	Amount money.Money
-  TransactionNum int64
 }
 
 var userMap map[string]money.Money
@@ -46,28 +43,21 @@ func NewTransactionId() int64 {
   return v
 }
 
-func (hold StockHolding) pay() error {
+func (hold StockHolding) pay(ctx *context.Context) error {
 	if stockMap[hold.UserId] == nil {
 		stockMap[hold.UserId] = make(map[string]int)
 	}
 
 	beforeStockAmount := stockMap[hold.UserId][hold.StockSymbol]
 	if beforeStockAmount < hold.Amount {
-    return logger.ErrorEventLog {
-      Timestamp: time.Now().UnixNano() / 1e6,
-      Server: "ts0",
-      TransactionNum: hold.Id(),
-      Username: hold.UserId,
-      StockSymbol: hold.StockSymbol,
-      ErrorMessage: "Not enough money to purchase stocks",
-    }
+	  return ctx.MakeError("Not enough stocks to complete transaction")
 	}
 
 	stockMap[hold.UserId][hold.StockSymbol] -= hold.Amount
 	return nil
 }
 
-func (hold StockHolding) receive() error {
+func (hold StockHolding) receive(ctx *context.Context) error {
 	if stockMap[hold.UserId] == nil {
 		stockMap[hold.UserId] = make(map[string]int)
 	}
@@ -76,60 +66,37 @@ func (hold StockHolding) receive() error {
 	return nil
 }
 
-func (hold MoneyHolding) pay() error {
+func (hold MoneyHolding) pay(ctx *context.Context) error {
 	beforeMoneyAmount := userMap[hold.UserId]
+	ctx.Funds = beforeMoneyAmount
+
 	if beforeMoneyAmount < hold.Amount {
-    return logger.ErrorEventLog {
-      Timestamp: time.Now().UnixNano() / 1e6,
-      Server: "ts0",
-      TransactionNum: hold.Id(),
-      Username: hold.UserId,
-      Funds: beforeMoneyAmount,
-      ErrorMessage: "Not enough stocks to sell stock",
-    }
+	  return ctx.MakeError("Not enough money to complete transaction")
 	}
 
 	userMap[hold.UserId] -= hold.Amount
-  logger.Log(logger.AccountTransactionLog{
-    Timestamp: time.Now().UnixNano() / 1e6,
-    Server: "ts0",
-    TransactionNum: hold.Id(),
-    Action: logger.RemoveAction,
-    Username: hold.UserId,
-    Funds: userMap[hold.UserId],
-  })
+	ctx.Funds = userMap[hold.UserId]
+	ctx.MakeAccountTransactionLog(logger.RemoveAction)
 
 	return nil
 }
 
-func (hold MoneyHolding) receive() error {
+func (hold MoneyHolding) receive(ctx *context.Context) error {
 	userMap[hold.UserId] += hold.Amount
-  logger.Log(logger.AccountTransactionLog{
-    Timestamp: time.Now().UnixNano() / 1e6,
-    Server: "ts0",
-    TransactionNum: hold.Id(),
-    Action: logger.AddAction,
-    Username: hold.UserId,
-    Funds: userMap[hold.UserId],
-  })
+	ctx.Funds = userMap[hold.UserId]
+	ctx.MakeAccountTransactionLog(logger.AddAction)
 	return nil
 }
 
-func (hold MoneyHolding) Id() int64 {
-  return hold.TransactionNum
-}
-
-func (hold StockHolding) Id() int64 {
-  return hold.TransactionNum
-}
-
-func AddFunds(userId string, amount money.Money) error {
+func AddFunds(userId string, amount money.Money, ctx *context.Context) (int64, error) {
   tid := NewTransactionId()
-  receivable := MoneyHolding{UserId: userId, Amount: amount, TransactionNum: tid}
-	return receivable.receive()
+  receivable := MoneyHolding{UserId: userId, Amount: amount}
+  err := receivable.receive(ctx)
+  return tid, err
 }
 
-func CheckFunds(userId string) (money.Money, error) {
+func CheckFunds(ctx *context.Context, userId string) (money.Money, error) {
+	ctx.Funds = userMap[userId]
 	return userMap[userId], nil
 }
 
@@ -140,8 +107,8 @@ func CheckStock(userId string, stockSymbol string) (int, error) {
 	return stockMap[userId][stockSymbol], nil
 }
 
-func attemptAllocate(trans Transaction) (Transaction, error) {
-	err := trans.payable.pay()
+func attemptAllocate(ctx *context.Context, trans Transaction) (Transaction, error) {
+	err := trans.payable.pay(ctx)
 	if err != nil {
 		return Transaction{}, err
 	}
@@ -149,29 +116,26 @@ func attemptAllocate(trans Transaction) (Transaction, error) {
 	return trans, nil
 }
 
-func AllocateFunds(userId string, amount money.Money, stockSymbol string, stockAmount int) (Transaction, error) {
-  tid := NewTransactionId()
-  payable := MoneyHolding{UserId: userId, Amount: amount, TransactionNum: tid}
-  receivable := StockHolding{UserId: userId, StockSymbol: stockSymbol, Amount: stockAmount, TransactionNum: tid}
+func AllocateFunds(ctx *context.Context, amount money.Money, stockAmount int) (Transaction, error) {
+  payable := MoneyHolding{UserId: ctx.UserId, Amount: amount}
+  receivable := StockHolding{UserId: ctx.UserId, StockSymbol: ctx.StockSymbol, Amount: stockAmount}
 	trans := Transaction{payable: payable, receivable: receivable}
 
-	return attemptAllocate(trans)
+	return attemptAllocate(ctx, trans)
 }
 
-func AllocateStocks(userId string, stockSymbol string, stockAmount int, amount money.Money) (Transaction, error) {
-  tid := NewTransactionId()
-  payable := StockHolding{UserId: userId, StockSymbol: stockSymbol, Amount: stockAmount, TransactionNum: tid}
-  receivable := MoneyHolding{UserId: userId, Amount: amount, TransactionNum: tid}
+func AllocateStocks(ctx *context.Context, stockAmount int, amount money.Money) (Transaction, error) {
+  payable := StockHolding{UserId: ctx.UserId, StockSymbol: ctx.StockSymbol, Amount: stockAmount}
+  receivable := MoneyHolding{UserId: ctx.UserId, Amount: amount}
 	trans := Transaction{payable: payable, receivable: receivable}
 
-	return attemptAllocate(trans)
+	return attemptAllocate(ctx, trans)
 }
 
-func HoldStocks(userId string, stockSymbol string, amount int) (Holding, error) {
-  tid := NewTransactionId()
-  hold := StockHolding{UserId: userId, StockSymbol: stockSymbol, Amount: amount, TransactionNum: tid}
+func HoldStocks(ctx *context.Context, amount int) (Holding, error) {
+  hold := StockHolding{UserId: ctx.UserId, StockSymbol: ctx.StockSymbol, Amount: amount}
 
-  err := hold.pay()
+  err := hold.pay(ctx)
   if err != nil {
     return nil, err
   }
@@ -179,11 +143,10 @@ func HoldStocks(userId string, stockSymbol string, amount int) (Holding, error) 
   return hold, nil
 }
 
-func HoldMoney(userId string, amount money.Money) (Holding, error) {
-  tid := NewTransactionId()
-  hold := MoneyHolding{UserId: userId, Amount: amount, TransactionNum: tid}
+func HoldMoney(ctx *context.Context, amount money.Money) (Holding, error) {
+  hold := MoneyHolding{UserId: ctx.UserId, Amount: amount}
 
-  err := hold.pay()
+  err := hold.pay(ctx)
   if err != nil {
     return nil, err
   }
@@ -192,16 +155,16 @@ func HoldMoney(userId string, amount money.Money) (Holding, error) {
 }
 
 //TODO return and execute should be atomic
-func Return(holds... Holding) error {
+func Return(ctx *context.Context, holds... Holding) error {
   executed := make([]Holding, len(holds))
 
   for _, hold := range holds {
     h := Holding(hold)
-    err := h.receive()
+    err := h.receive(ctx)
     if err != nil {
       // When we add the database, we should just cancel
       for _, usedHold := range executed {
-        usedHold.pay()
+        usedHold.pay(ctx)
       }
       return err
     }
@@ -211,16 +174,16 @@ func Return(holds... Holding) error {
   return nil
 }
 
-func Execute(holds... Holding) error {
+func Execute(ctx *context.Context, holds... Holding) error {
   executed := make([]Holding, len(holds))
 
   for _, hold := range holds {
     h := Holding(hold)
-    err := h.pay()
+    err := h.pay(ctx)
     if err != nil {
       // When we add the database, we should just cancel
       for _, usedHold := range executed {
-        usedHold.receive()
+        usedHold.receive(ctx)
       }
       return err
     }
@@ -230,10 +193,10 @@ func Execute(holds... Holding) error {
   return nil
 }
 
-func Commit(trans Transaction) error {
-	return trans.receivable.receive()
+func Commit(ctx *context.Context, trans Transaction) error {
+	return trans.receivable.receive(ctx)
 }
 
-func Cancel(trans Transaction) error {
-	return trans.payable.receive()
+func Cancel(ctx *context.Context, trans Transaction) error {
+	return trans.payable.receive(ctx)
 }

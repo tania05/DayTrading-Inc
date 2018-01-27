@@ -49,4 +49,7 @@ RUN echo "call plug#begin('~/.local/share/nvim/plugged')" \
 
 RUN nvim +PlugInstall +qa
 
+ADD GoLand-2017.3 /local/goland
+RUN apt-get install x11-apps libxext-dev libxrender-dev libxslt1.1 libxtst-dev libgtk2.0-0 libcanberra-gtk-module -y
+
 CMD ["/bin/bash"]
