@@ -106,7 +106,7 @@ type DumplogCommand struct {
   FileName string
 }
 
-type AdminDumblogCommand struct {
+type AdminDumplogCommand struct {
   TransactionNum int64
   FileName string
 }
@@ -133,7 +133,7 @@ func PostAddHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, "", logger.Add)
   err = addFunds(ctx, money.Money(payload.Amount))
 	if err != nil {
-		w.WriteHeader(400)	
+		w.WriteHeader(400)
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -360,11 +360,31 @@ func DeleteSellTriggerHandler(w http.ResponseWriter, r *http.Request) {
 func PostAdminDumpLogHandler(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusCreated)
   io.WriteString(w, "Admin Dump logger")
+
+	var payload AdminDumplogCommand
+	body, _ := ioutil.ReadAll(r.Body)
+	err := json.Unmarshal(body, &payload)
+	if err != nil {
+		panic(err)
+	}
+	defer r.Body.Close()
+
+	context.MakeContext(payload.TransactionNum, "", "", logger.DumpLog)
 }
 
 func PostDumpLogHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	io.WriteString(w, "User Dump logger!")
+
+	var payload DumplogCommand
+	body, _ := ioutil.ReadAll(r.Body)
+	err := json.Unmarshal(body, &payload)
+	if err != nil {
+		panic(err)
+	}
+	defer r.Body.Close()
+
+	context.MakeContext(payload.TransactionNum, payload.UserId, "", logger.DumpLog)
 }
 
 func GetDisplaySummaryHandler(w http.ResponseWriter, r *http.Request) {
