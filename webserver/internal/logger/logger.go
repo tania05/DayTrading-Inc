@@ -53,7 +53,7 @@ type QuoteServerLog struct {
 	Price           money.Money `xml:"price"`
 	StockSymbol     string      `xml:"stockSymbol"`
 	Username        string      `xml:"username"`
-	QuoteServerTime int64       `xml:"quoteServcerTime"`
+	QuoteServerTime int64       `xml:"quoteServerTime"`
 	Cryptokey       string      `xml:"cryptokey"`
 }
 
