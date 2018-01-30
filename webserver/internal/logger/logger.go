@@ -39,7 +39,7 @@ type UserCommandLog struct {
 	Server         string      `xml:"server"`
 	TransactionNum int64       `xml:"transactionNum"`
 	Command        CommandType `xml:"command"`
-	Username       string      `xml:"username"`
+	Username       string      `xml:"username,omitempty"`
 	StockSymbol    string      `xml:"stockSymbol,omitempty"`
 	Filename       string      `xml:"filename,omitempty"`
 	Funds          money.Money `xml:"funds,omitempty"`

@@ -11,10 +11,11 @@ import (
 	"webserver/internal/money"
 	"webserver/internal/logger"
 	"webserver/internal/context"
+  "webserver/internal/trigger"
 	"strings"
 )
 
-const domain = "localhost"
+const domain = "192.168.1.152"
 const port = 4441
 
 var buystack []database.Transaction
@@ -37,6 +38,7 @@ func getQuote(ctx *context.Context) money.Money {
 	buff, _ := ioutil.ReadAll(conn)
 	log.Printf("Recieve: %s", buff)
 
+  fmt.Println(string(buff))
 	f := strings.Split(string(buff), ",")
 	f3, _:= strconv.Atoi(f[3])
 	val, err := strconv.Atoi(strings.Replace(strings.Split(string(buff),",")[0],".","",-1))
@@ -49,8 +51,10 @@ func getQuote(ctx *context.Context) money.Money {
 		Username: ctx.UserId,
 		StockSymbol: ctx.StockSymbol,
 		Price: money.Money(val),
-		Cryptokey: f[4]})
+		Cryptokey: strings.Trim(f[4], "\n")})
 	fmt.Println(val)
+  //TODO fix this horrible thingers //"kk", []sg if not empty
+  trigger.OnQuoteUpdate(ctx, money.Money(val))
 	return money.Money(val)
 }
 
@@ -59,7 +63,7 @@ func addFunds(ctx *context.Context, amount money.Money ) error {
 }
 
 func transact(ctx *context.Context, bs int, amount money.Money) {
-	price := money.Money(45)
+	price := getQuote(ctx)
 	stocknum := int((amount/price))
 	cost := money.Money(stocknum * int(price))
 

@@ -212,7 +212,7 @@ func (command AdminDumblogCommand) request() string {
 }
 
 func (command DisplaySummary) request() string {
-  return getRequest("/users/" + command.UserId + "/summary")
+  return postRequest("/users/" + command.UserId + "/summary", post, command)
 }
 
 func handleCommand(userMap map[string][]Command) {
@@ -351,7 +351,7 @@ func main() {
       if(len(parts) < 3) {
         fileName := parts[1]
         dumplogCommand := AdminDumblogCommand{ TransactionNum: transactionNum, FileName: fileName}
-        userMap["\n"] = append(userMap["\n"], dumplogCommand)
+        userMap["\xFF\xFF"] = append(userMap["\xFF\xFF"], dumplogCommand)
       } else {
         fileName := parts[2]
         dumplogCommand := DumplogCommand{ TransactionNum: transactionNum, UserId: userId, FileName: fileName}

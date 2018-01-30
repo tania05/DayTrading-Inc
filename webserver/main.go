@@ -5,7 +5,7 @@ import (
   "io"
   "encoding/json"
   "github.com/gorilla/mux"
-//   "fmt"
+  "fmt"
   "log"
   "webserver/internal/money"
   "webserver/internal/trigger"
@@ -145,6 +145,8 @@ func GetQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	var payload QuoteCommand
 	body, _ := ioutil.ReadAll(r.Body)
 	err := json.Unmarshal(body, &payload)
+
+  fmt.Println(string(body))
 
 	if err != nil {
 		panic(err)
@@ -388,21 +390,18 @@ func PostDumpLogHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetDisplaySummaryHandler(w http.ResponseWriter, r *http.Request) {
-	urlVars := mux.Vars(r)
+	w.WriteHeader(http.StatusOK)
 
-	ret := map[string]interface{}{
-		"total_buys":  3,
-		"total_sells": 4,
-		"user_id":     urlVars["userId"],
-	}
-
-	bytes, err := json.Marshal(ret) //TODO, we should be checking the error, but ehh... its fine, probably
+	var payload DisplaySummary
+	body, _ := ioutil.ReadAll(r.Body)
+	err := json.Unmarshal(body, &payload)
 	if err != nil {
 		panic(err)
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(bytes)
+	defer r.Body.Close()
+
+  context.MakeContext(payload.TransactionNum, payload.UserId, "", logger.DisplaySummary)
+
 }
 
 func main() {
@@ -425,7 +424,7 @@ func main() {
 
   r.Path("/users/dump").Methods("POST").HandlerFunc(PostDumpLogHandler);
   r.Path("/dump").Methods("POST").HandlerFunc(PostAdminDumpLogHandler);  
-  r.Path("/users/{userId}/summary").Methods("GET").HandlerFunc(GetDisplaySummaryHandler);
+  r.Path("/users/{userId}/summary").Methods("POST").HandlerFunc(GetDisplaySummaryHandler);
 
   http.Handle("/", r)
   log.Fatal(http.ListenAndServe(":8080", nil))
