@@ -14,7 +14,7 @@ type Configuration struct {
 var GlobalConfig Configuration
 
 func init() {
-	_, err := toml.DecodeFile("config.toml", &globalConfig)
+	_, err := toml.DecodeFile("config.toml", &GlobalConfig)
 	if err != nil {
 		panic("Failed to read configuration file, " + err.Error())
 	}

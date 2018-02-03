@@ -10,9 +10,7 @@ import (
   "webserver/internal/trigger"
   "webserver/internal/logger"
   "webserver/internal/context"
-  "webserver/internal/config"
   "io/ioutil"
-  "fmt"
 )
 
 type AddCommand struct {
