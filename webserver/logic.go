@@ -13,16 +13,15 @@ import (
 	"webserver/internal/context"
   "webserver/internal/trigger"
 	"strings"
+	"webserver/internal/config"
 )
-
-const domain = "localhost"
-const port = 4441
 
 var buystack []database.Transaction
 var sellstack []database.Transaction
 
 func getQuote(ctx *context.Context) money.Money {
-	addr := (domain + ":" + strconv.Itoa(port))
+
+	addr := config.GlobalConfig.WebServer.Domain+ ":" + strconv.Itoa(config.GlobalConfig.WebServer.Port)
 
 	conn, err := net.Dial("tcp", addr)
 

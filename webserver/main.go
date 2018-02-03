@@ -5,13 +5,14 @@ import (
   "io"
   "encoding/json"
   "github.com/gorilla/mux"
-  "fmt"
   "log"
   "webserver/internal/money"
   "webserver/internal/trigger"
   "webserver/internal/logger"
   "webserver/internal/context"
+  "webserver/internal/config"
   "io/ioutil"
+  "fmt"
 )
 
 type AddCommand struct {
@@ -403,27 +404,27 @@ func GetDisplaySummaryHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-  r := mux.NewRouter()
-  r.HandleFunc("/", HelloHandler)
-  r.Path("/users").Methods("POST").HandlerFunc(PostAddHandler);
-  r.Path("/stocks/{stockSym}/quote").Methods("POST").HandlerFunc(GetQuoteHandler);
-  r.Path("/stocks/{stockSym}/buy").Methods("POST").HandlerFunc(PostBuyHandler);
-  r.Path("/stocks/buy").Methods("PUT").HandlerFunc(PutBuyHandler);
-  r.Path("/stocks/buy").Methods("DELETE").HandlerFunc(DeleteBuyHandler);
-  r.Path("/stocks/{stockSym}/sell").Methods("POST").HandlerFunc(PostSellHandler);
-  r.Path("/stocks/sell").Methods("PUT").HandlerFunc(PutSellHandler);
-  r.Path("/stocks/sell").Methods("DELETE").HandlerFunc(DeleteSellHandler);
-  r.Path("/triggers/{stockSym}/buy").Methods("POST").HandlerFunc(PostBuyTriggerHandler);
-  r.Path("/triggers/{stockSym}/buy").Methods("PUT").HandlerFunc(PutBuyTriggerHandler);
-  r.Path("/triggers/{stockSym}/buy").Methods("DELETE").HandlerFunc(DeleteBuyTriggerHandler);
-  r.Path("/triggers/{stockSym}/sell").Methods("POST").HandlerFunc(PostSellTriggerHandler);
-  r.Path("/triggers/{stockSym}/sell").Methods("PUT").HandlerFunc(PutSellTriggerHandler);
-  r.Path("/triggers/{stockSym}/sell").Methods("DELETE").HandlerFunc(DeleteSellTriggerHandler);
+	r := mux.NewRouter()
+	r.HandleFunc("/", HelloHandler)
+	r.Path("/users").Methods("POST").HandlerFunc(PostAddHandler);
+	r.Path("/stocks/{stockSym}/quote").Methods("POST").HandlerFunc(GetQuoteHandler);
+	r.Path("/stocks/{stockSym}/buy").Methods("POST").HandlerFunc(PostBuyHandler);
+	r.Path("/stocks/buy").Methods("PUT").HandlerFunc(PutBuyHandler);
+	r.Path("/stocks/buy").Methods("DELETE").HandlerFunc(DeleteBuyHandler);
+	r.Path("/stocks/{stockSym}/sell").Methods("POST").HandlerFunc(PostSellHandler);
+	r.Path("/stocks/sell").Methods("PUT").HandlerFunc(PutSellHandler);
+	r.Path("/stocks/sell").Methods("DELETE").HandlerFunc(DeleteSellHandler);
+	r.Path("/triggers/{stockSym}/buy").Methods("POST").HandlerFunc(PostBuyTriggerHandler);
+	r.Path("/triggers/{stockSym}/buy").Methods("PUT").HandlerFunc(PutBuyTriggerHandler);
+	r.Path("/triggers/{stockSym}/buy").Methods("DELETE").HandlerFunc(DeleteBuyTriggerHandler);
+	r.Path("/triggers/{stockSym}/sell").Methods("POST").HandlerFunc(PostSellTriggerHandler);
+	r.Path("/triggers/{stockSym}/sell").Methods("PUT").HandlerFunc(PutSellTriggerHandler);
+	r.Path("/triggers/{stockSym}/sell").Methods("DELETE").HandlerFunc(DeleteSellTriggerHandler);
 
-  r.Path("/users/dump").Methods("POST").HandlerFunc(PostDumpLogHandler);
-  r.Path("/dump").Methods("POST").HandlerFunc(PostAdminDumpLogHandler);  
-  r.Path("/users/{userId}/summary").Methods("POST").HandlerFunc(GetDisplaySummaryHandler);
+	r.Path("/users/dump").Methods("POST").HandlerFunc(PostDumpLogHandler);
+	r.Path("/dump").Methods("POST").HandlerFunc(PostAdminDumpLogHandler);
+	r.Path("/users/{userId}/summary").Methods("POST").HandlerFunc(GetDisplaySummaryHandler);
 
-  http.Handle("/", r)
-  log.Fatal(http.ListenAndServe(":8080", nil))
+	http.Handle("/", r)
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
