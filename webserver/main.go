@@ -146,8 +146,6 @@ func GetQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	body, _ := ioutil.ReadAll(r.Body)
 	err := json.Unmarshal(body, &payload)
 
-  fmt.Println(string(body))
-
 	if err != nil {
 		panic(err)
 	}
@@ -400,7 +398,7 @@ func GetDisplaySummaryHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-  context.MakeContext(payload.TransactionNum, payload.UserId, "", logger.DisplaySummary)
+	context.MakeContext(payload.TransactionNum, payload.UserId, "", logger.DisplaySummary)
 
 }
 
