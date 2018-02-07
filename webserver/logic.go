@@ -13,16 +13,15 @@ import (
 	"webserver/internal/context"
   "webserver/internal/trigger"
 	"strings"
+	"webserver/internal/config"
 )
-
-const domain = "192.168.1.152"
-const port = 4441
 
 var buystack []database.Transaction
 var sellstack []database.Transaction
 
 func getQuote(ctx *context.Context) money.Money {
-	addr := (domain + ":" + strconv.Itoa(port))
+
+	addr := config.GlobalConfig.WebServer.Domain+ ":" + strconv.Itoa(config.GlobalConfig.WebServer.Port)
 
 	conn, err := net.Dial("tcp", addr)
 
@@ -38,7 +37,6 @@ func getQuote(ctx *context.Context) money.Money {
 	buff, _ := ioutil.ReadAll(conn)
 	log.Printf("Recieve: %s", buff)
 
-  fmt.Println(string(buff))
 	f := strings.Split(string(buff), ",")
 	f3, _:= strconv.Atoi(f[3])
 	val, err := strconv.Atoi(strings.Replace(strings.Split(string(buff),",")[0],".","",-1))
@@ -53,8 +51,9 @@ func getQuote(ctx *context.Context) money.Money {
 		Price: money.Money(val),
 		Cryptokey: strings.Trim(f[4], "\n")})
 	fmt.Println(val)
-  //TODO fix this horrible thingers //"kk", []sg if not empty
-  trigger.OnQuoteUpdate(ctx, money.Money(val))
+
+	//TODO fix this horrible thingers //"kk", []sg if not empty
+	trigger.OnQuoteUpdate(ctx, money.Money(val))
 	return money.Money(val)
 }
 
