@@ -148,85 +148,110 @@ func getRequest(path string) string{
 }
 
 func (command AddCommand) request() string {
-  return postRequest("/users", post, command)
+  return fmt.Sprintln("AddCommand")
+  // return postRequest("/users", post, command)
 }
 
 func (command QuoteCommand) request() string {
-  return postRequest("/stocks/"+command.StockSymbol+"/quote", post, command)
+  return fmt.Sprintln("QuoteCommand")  
+  // return postRequest("/stocks/"+command.StockSymbol+"/quote", post, command)
 }
 
 func (command BuyCommand) request() string {
-  return postRequest("/stocks/"+command.StockSymbol+"/buy", post, command)
+  return fmt.Sprintln("BuyCommand")  
+  // return postRequest("/stocks/"+command.StockSymbol+"/buy", post, command)
 }
 
 func (command CommitBuyCommand) request() string {
-  return postRequest("/stocks/buy", put, command)
+  return fmt.Sprintln("CommitBuyCommand")  
+  // return postRequest("/stocks/buy", put, command)
 }
 
 func (command CancelBuyCommand) request() string {
-  return postRequest("/stocks/buy", delete, command)
+  return fmt.Sprintln("CancelBuyCommand")
+  // return postRequest("/stocks/buy", delete, command)
 }
 
 func (command SellCommand) request() string {
-  return postRequest("/stocks/"+command.StockSymbol+"/sell", post, command)
+  return fmt.Sprintln("SellCommand")
+  // return postRequest("/stocks/"+command.StockSymbol+"/sell", post, command)
 }
 
 func (command CommitSellCommand) request() string {
-  return postRequest("/stocks/sell", put, command)
+  return fmt.Sprintln("CommitSellCommand")
+  // return postRequest("/stocks/sell", put, command)
 }
 
 func (command CancelSellCommand) request() string {
-  return postRequest("/stocks/sell", delete, command)
+  return fmt.Sprintln("CancelSellCommand")
+  // return postRequest("/stocks/sell", delete, command)
 }
 
 func (command SetBuyAmountCommand) request() string {
-  return postRequest("/triggers/"+command.StockSymbol+"/buy", post, command)
+  return fmt.Sprintln("SetBuyAmountCommand")
+  // return postRequest("/triggers/"+command.StockSymbol+"/buy", post, command)
 }
 
 func (command CancelSetBuyCommand) request() string {
-  return postRequest("/triggers/"+command.StockSymbol+"/buy", post, command)
+  return fmt.Sprintln("CancelSetBuyCommand")
+  // return postRequest("/triggers/"+command.StockSymbol+"/buy", post, command)
 }
 
 func (command SetBuyTriggerCommand) request() string {
-  return postRequest("/triggers/"+command.StockSymbol+"/buy", post, command)
+  return fmt.Sprintln("SetBuyTriggerCommand")
+  // return postRequest("/triggers/"+command.StockSymbol+"/buy", post, command)
 }
 
 func (command SetSellAmountCommand) request() string {
-  return postRequest("/triggers/"+command.StockSymbol+"/sell", post, command)
+  return fmt.Sprintln("SetSellAmountCommand")
+  // return postRequest("/triggers/"+command.StockSymbol+"/sell", post, command)
 }
 
 func (command CancelSetSellCommand) request() string {
-  return postRequest("/triggers/"+command.StockSymbol+"/sell", post, command)
+  return fmt.Sprintln("CanceletSellCommand")
+  // return postRequest("/triggers/"+command.StockSymbol+"/sell", post, command)
 }
 
 func (command SetSellTriggerCommand) request() string {
-  return postRequest("/triggers/"+command.StockSymbol+"/sell", post, command)
+  return fmt.Sprintln("SetSellTriggerCommand")
+  // return postRequest("/triggers/"+command.StockSymbol+"/sell", post, command)
 }
 
 func (command DumplogCommand) request() string {
-  return postRequest("/"+command.UserId+"/dump", post, command)
+  return fmt.Sprintln("DumplogCommand")
+  // return postRequest("/"+command.UserId+"/dump", post, command)
 }
 
 func (command AdminDumblogCommand) request() string {
-  return postRequest("/dump", post, command)
+  return fmt.Sprintln("AdminDumpLogCommand")
+  // return postRequest("/dump", post, command)
 }
 
 func (command DisplaySummary) request() string {
-  return postRequest("/users/" + command.UserId + "/summary", post, command)
+  return fmt.Sprintln("DisplaySummaryCommand")
+  // return postRequest("/users/" + command.UserId + "/summary", post, command)
 }
 
 func handleCommand(userMap map[string][]Command) {
+  done := make(chan int, 250)
   for key, value := range userMap {
-    fmt.Println(key)
-    for _, n := range value{
-      fmt.Println(n.request())
-    }
+    go func(userId string, commands [] Command, done chan int){
+      for _, n := range commands{
+        fmt.Println(n.request())
+      }
+      done <- 0      
+    }(key, value, done)
+    <-done
   }
-
+  
+  
+  // for _,_ := range userMap {
+  //   <- c
+  // }
 }
 
 func main() {
-  b, err := ioutil.ReadFile("1userWorkLoad.txt")
+  b, err := ioutil.ReadFile("2userWorkLoad.txt")
 
   if (err != nil) {
     panic(err)
@@ -241,14 +266,14 @@ func main() {
     if len(parts) < 2 {
       continue
     }
-    fmt.Println("************************************************************")
-    fmt.Println(parts[0])
+    // fmt.Println("************************************************************")
+    // fmt.Println(parts[0])
     userId := parts[1]
     transCommand := strings.Split(parts[0], " ")
     transactionNum, _ := strconv.ParseInt(strings.Trim((transCommand[0]),"[]"),10,0)
     commandType := transCommand[1]
-    fmt.Println(transactionNum)
-    fmt.Println(commandType)
+    // fmt.Println(transactionNum)
+    // fmt.Println(commandType)
     // transactionNum, commandType := strings.Split(parts[0], " ")
     
     switch commandType{
@@ -363,6 +388,5 @@ func main() {
       userMap[userId] = append(userMap[userId], displaySummary)
     }
   }
-
   handleCommand(userMap)
 }
