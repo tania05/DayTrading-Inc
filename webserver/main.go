@@ -136,7 +136,6 @@ func PostAddHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	// fmt.Println(database.CheckFunds(ctx, payload.UserId))
 	io.WriteString(w, payload.UserId)
 }
 

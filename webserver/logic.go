@@ -16,8 +16,12 @@ import (
 	"webserver/internal/config"
 )
 
-var buystack []database.Transaction
-var sellstack []database.Transaction
+var buystack map[string][]database.Transaction = make(map[string][]database.Transaction)
+var sellstack map[string][]database.Transaction = make(map[string][]database.Transaction)
+
+func getQuotetest(ctx *context.Context) money.Money{
+	return money.Money(23)
+}
 
 func getQuote(ctx *context.Context) money.Money {
 
@@ -58,6 +62,8 @@ func getQuote(ctx *context.Context) money.Money {
 }
 
 func addFunds(ctx *context.Context, amount money.Money ) error {
+	//fmt.Println(ctx.UserId)
+	//fmt.Println(ctx.Funds)
 	return database.AddFunds(ctx, amount)
 }
 
@@ -68,36 +74,46 @@ func transact(ctx *context.Context, bs int, amount money.Money) {
 
 	if bs == 1 {
 		t, err := database.AllocateFunds(ctx, cost, stocknum)
-		if err != nil {
-			panic(err)
+		// if err != nil {
+		// 	panic(err)
+		// }
+		if err == nil {
+			buystack[ctx.UserId] = append(buystack[ctx.UserId], t)
+			fmt.Println("buy")
 		}
-		buystack = append(buystack, t)
-		fmt.Println("buy")
 		//err := pushPendingBuy(cost, stocknum, stock, user)
 	} else {
-		t, _ := database.AllocateStocks(ctx, stocknum, cost)
-		sellstack = append(sellstack, t)
-		fmt.Println("sell")
+		t, err := database.AllocateStocks(ctx, stocknum, cost)
+		// if err != nil {
+		// 	panic(err)
+		// }
+		if err == nil {
+			sellstack[ctx.UserId] = append(sellstack[ctx.UserId], t)
+			// fmt.Println(sellstack[ctx.UserId])
+			// fmt.Println(t)
+			// fmt.Println("sell")
+		}
 	}
 }
 
 func commitTransact(ctx *context.Context, bs int){
 	//fmt.Println("buy/sell confirm")
 
-	if bs == 1 && len(buystack) > 0{
-		database.Commit(ctx, popback(buystack))
+	if bs == 1 && len(buystack[ctx.UserId]) > 0{
+		database.Commit(ctx, popback(buystack[ctx.UserId]))
 		fmt.Println("buy confirm")
-	} else if len(sellstack) > 0{
-		database.Commit(ctx, popback(sellstack))
+	} else if len(sellstack[ctx.UserId]) > 0{
+		database.Commit(ctx, popback(sellstack[ctx.UserId]))
 		fmt.Println("sell confirm")
 	}
 }
 
 func cancelTransact(ctx *context.Context, bs int){
-	if bs == 1 && len(buystack) > 0 {
-		database.Cancel(ctx, popback(buystack))
-	} else if len(sellstack) > 0{
-		database.Cancel(ctx, popback(sellstack))
+	if bs == 1 && len(buystack[ctx.UserId]) > 0 {
+		database.Cancel(ctx, popback(buystack[ctx.UserId]))
+	} else if len(sellstack[ctx.UserId]) > 0{
+		fmt.Println(sellstack[ctx.UserId])
+		database.Cancel(ctx, popback(sellstack[ctx.UserId]))
 	}
 }
 
