@@ -1,0 +1,25 @@
+version: '3'
+
+services:
+  webserver:
+    depends_on:
+      - redis
+    build:
+      args:
+        - buildpath=webserver
+      dockerfile: go-build/Dockerfile
+      context: .
+    extra_hosts:
+      - "quoteserver:172.18.0.1"
+    networks:
+      default:
+        aliases:
+          - webserver
+    command: /app/bin/webserver
+    ports:
+     - "8000:8080"
+
+  redis:
+    image: redis:4.0.8-alpine
+    ports:
+     - "6379:6379"

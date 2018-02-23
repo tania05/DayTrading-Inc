@@ -1,0 +1,11 @@
+[QuoteServer]
+Domain = "quoteserver"
+Port = 8080
+
+[WebServer]
+Domain = "webserver"
+Port = 8080
+
+[Redis]
+Domain = "redis"
+Port = 6379

@@ -5,7 +5,17 @@ import (
 )
 
 type Configuration struct {
+	QuoteServer struct {
+		Domain string
+		Port int
+	}
+
 	WebServer struct {
+		Domain string
+		Port int
+	}
+
+	Redis struct {
 		Domain string
 		Port int
 	}

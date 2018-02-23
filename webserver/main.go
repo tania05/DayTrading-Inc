@@ -11,6 +11,8 @@ import (
   "webserver/internal/logger"
   "webserver/internal/context"
   "io/ioutil"
+	"webserver/internal/config"
+	"strconv"
 )
 
 type AddCommand struct {
@@ -423,5 +425,8 @@ func main() {
 	r.Path("/users/{userId}/summary").Methods("POST").HandlerFunc(GetDisplaySummaryHandler);
 
 	http.Handle("/", r)
-	log.Fatal(http.ListenAndServe(":8080", nil))
+
+	port := strconv.Itoa(config.GlobalConfig.WebServer.Port)
+	addr := ":" + port
+	log.Fatal(http.ListenAndServe(addr, nil))
 }
