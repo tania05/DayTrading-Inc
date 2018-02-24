@@ -1,7 +1,7 @@
 module Main where
 
 import Control.Applicative ((<$>))
-import Control.Concurrent (forkIO)
+import Control.Concurrent (forkIO, threadDelay)
 import Control.Exception (bracket_)
 import Control.Monad (replicateM)
 import Data.Char as C
@@ -73,6 +73,8 @@ giveResponse handle (Just (QuoteCommand sym userid)) = do
   timestamp <- timestampIO
   cryptokey <- cryptokeyIO
   let output = intercalate "," [quote, sym, userid, timestamp, cryptokey]
+  delayTime <- randomRIO (2500000, 10000000) :: IO Int
+  threadDelay delayTime
   hPutStrLn handle output
   putStrLn $ "Quote lookup: " ++ show (QuoteCommand sym userid) ++ " returned " ++ output
   where
