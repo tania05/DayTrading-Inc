@@ -16,8 +16,11 @@ ADD . /app/src
 
 RUN cd /app/src/$buildpath && go build && go install
 
+
+FROM alpine:3.7
+COPY --from=0 /go/bin/$buildpath /app/$buildpath
 # Yes, this is in the root directory
 ADD config.toml config.toml
 
 EXPOSE 8080
-CMD ["/bin/bash"]
+CMD ["/bin/sh"]
