@@ -114,7 +114,7 @@ type Command interface {
   request() string
 }
 
-const url = "http://localhost:8080"
+const url = "http://localhost:8000"
 const post = "POST"
 const put = "PUT"
 const delete = "DELETE"

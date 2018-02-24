@@ -17,6 +17,7 @@ import (
 	"github.com/go-redis/redis"
 	"github.com/go-redis/cache"
 	"encoding/json"
+	"sync"
 )
 
 type QuoteCacheItem struct {
@@ -26,6 +27,7 @@ type QuoteCacheItem struct {
 
 var buystack map[string][]database.Transaction = make(map[string][]database.Transaction)
 var sellstack map[string][]database.Transaction = make(map[string][]database.Transaction)
+var mutex sync.Mutex
 
 var redisCodec *cache.Codec
 
@@ -136,6 +138,9 @@ func transact(ctx *context.Context, bs int, amount money.Money) {
 	price := getQuote(ctx)
 	stocknum := int((amount/price))
 	cost := money.Money(stocknum * int(price))
+	
+	mutex.Lock()
+	defer mutex.Unlock()
 
 	if bs == 1 {
 		t, err := database.AllocateFunds(ctx, cost, stocknum)
@@ -143,8 +148,9 @@ func transact(ctx *context.Context, bs int, amount money.Money) {
 		// 	panic(err)
 		// }
 		if err == nil {
+			
 			buystack[ctx.UserId] = append(buystack[ctx.UserId], t)
-			fmt.Println("buy")
+			// fmt.Println("buy")
 		}
 		//err := pushPendingBuy(cost, stocknum, stock, user)
 	} else {
@@ -163,21 +169,24 @@ func transact(ctx *context.Context, bs int, amount money.Money) {
 
 func commitTransact(ctx *context.Context, bs int){
 	//fmt.Println("buy/sell confirm")
-
+	mutex.Lock()
+	defer mutex.Unlock()
 	if bs == 1 && len(buystack[ctx.UserId]) > 0{
 		database.Commit(ctx, popback(buystack[ctx.UserId]))
-		fmt.Println("buy confirm")
+		// fmt.Println("buy confirm")
 	} else if len(sellstack[ctx.UserId]) > 0{
 		database.Commit(ctx, popback(sellstack[ctx.UserId]))
-		fmt.Println("sell confirm")
+		// fmt.Println("sell confirm")
 	}
 }
 
 func cancelTransact(ctx *context.Context, bs int){
+	mutex.Lock()
+	defer mutex.Unlock()
 	if bs == 1 && len(buystack[ctx.UserId]) > 0 {
 		database.Cancel(ctx, popback(buystack[ctx.UserId]))
 	} else if len(sellstack[ctx.UserId]) > 0{
-		fmt.Println(sellstack[ctx.UserId])
+		// fmt.Println(sellstack[ctx.UserId])
 		database.Cancel(ctx, popback(sellstack[ctx.UserId]))
 	}
 }
