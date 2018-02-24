@@ -4,6 +4,7 @@ import (
 	"webserver/internal/money"
   "webserver/internal/logger"
   "webserver/internal/context"
+  "sync"
 )
 
 type Holding interface {
@@ -30,6 +31,7 @@ type MoneyHolding struct {
 var userMap map[string]money.Money
 var stockMap map[string]map[string]int
 var nextTransactionId int64
+var mutex sync.Mutex
 
 func init() {
 	userMap = make(map[string]money.Money)
@@ -37,13 +39,10 @@ func init() {
   nextTransactionId = 1
 }
 
-func NewTransactionId() int64 {
-  v := nextTransactionId
-  nextTransactionId++
-  return v
-}
-
 func (hold StockHolding) pay(ctx *context.Context) error {
+	mutex.Lock()
+	defer mutex.Unlock()
+
 	if stockMap[hold.UserId] == nil {
 		stockMap[hold.UserId] = make(map[string]int)
 	}
@@ -58,6 +57,9 @@ func (hold StockHolding) pay(ctx *context.Context) error {
 }
 
 func (hold StockHolding) receive(ctx *context.Context) error {
+	mutex.Lock()
+	defer mutex.Unlock()
+
 	if stockMap[hold.UserId] == nil {
 		stockMap[hold.UserId] = make(map[string]int)
 	}
@@ -67,6 +69,9 @@ func (hold StockHolding) receive(ctx *context.Context) error {
 }
 
 func (hold MoneyHolding) pay(ctx *context.Context) error {
+	mutex.Lock()
+	defer mutex.Unlock()
+
 	beforeMoneyAmount := userMap[hold.UserId]
 	ctx.Funds = beforeMoneyAmount
 
@@ -82,6 +87,9 @@ func (hold MoneyHolding) pay(ctx *context.Context) error {
 }
 
 func (hold MoneyHolding) receive(ctx *context.Context) error {
+	mutex.Lock()
+	defer mutex.Unlock()
+
 	userMap[hold.UserId] += hold.Amount
 	ctx.Funds = userMap[hold.UserId]
 	ctx.MakeAccountTransactionLog(logger.AddAction)
