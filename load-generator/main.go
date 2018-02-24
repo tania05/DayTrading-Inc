@@ -241,17 +241,15 @@ func handleCommand(userMap map[string][]Command) {
       }
       done <- 0      
     }(key, value, done)
+  }
+
+  for range userMap {
     <-done
   }
-  
-  
-  // for _,_ := range userMap {
-  //   <- c
-  // }
 }
 
 func main() {
-  b, err := ioutil.ReadFile("10userWorkLoad.txt")
+  b, err := ioutil.ReadFile("100User_testWorkLoad")
 
   if (err != nil) {
     panic(err)
