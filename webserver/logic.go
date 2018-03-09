@@ -28,6 +28,7 @@ type QuoteCacheItem struct {
 var buystack map[string][]database.Transaction = make(map[string][]database.Transaction)
 var sellstack map[string][]database.Transaction = make(map[string][]database.Transaction)
 var mutex sync.Mutex
+var qmutex sync.Mutex
 
 var redisCodec *cache.Codec
 
@@ -77,6 +78,9 @@ func getQuote(ctx *context.Context) money.Money {
 
 	addr := config.GlobalConfig.QuoteServer.Domain+ ":" + strconv.Itoa(config.GlobalConfig.QuoteServer.Port)
 
+	qmutex.Lock()
+	time.Sleep(1000000)
+	qmutex.Unlock()
 	conn, err := net.Dial("tcp", addr)
 
 	defer conn.Close()
