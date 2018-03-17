@@ -3,19 +3,11 @@ package main
 import (
   "net/http"
   "io"
-  "encoding/json"
   "github.com/gorilla/mux"
   "log"
-  "webserver/internal/money"
-  "webserver/internal/trigger"
-  "webserver/internal/logger"
-  "webserver/internal/context"
-  "io/ioutil"
-	"webserver/internal/config"
-	"strconv"
 )
 
-var ipMap []string = {"128.333.3.3:9090"}
+var ipMap []string = []string{"128.333.3.3:9090"}
 
 func HelloHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
@@ -23,27 +15,19 @@ func HelloHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetServerHandler(w http.ResponseWriter, r *http.Request) {
-	body, _ := ioutil.ReadAll(r.Body)
-	err := json.Unmarshal(body, &payload)
+	//body, _ := ioutil.ReadAll(r.Body)
+	//err := json.Unmarshal(body, &payload)
 
-	ip = ipMap[0];
+	ip := ipMap[0];
 
-	if err != nil {
-		panic(err)
-	}
+	
 	defer r.Body.Close()
 	w.Header().Set("Content-Type", "text/plain")
-	w.Write(ip)
+	w.Write([]byte(ip))
 }
 
 func RegisterIPHandler(w http.ResponseWriter, r *http.Request) {
-	var payload AddCommand
-	body, _ := ioutil.ReadAll(r.Body)
-	err := json.Unmarshal(body, &payload)
-
-	if err != nil {
-		panic(err)
-	}
+	//body, _ := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
 }
 
