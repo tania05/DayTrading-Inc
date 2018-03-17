@@ -115,6 +115,7 @@ type Command interface {
 }
 
 const url = "http://localhost:8000"
+const lburl = "http://localhost:5555"
 const post = "POST"
 const put = "PUT"
 const delete = "DELETE"
@@ -258,6 +259,9 @@ func main() {
   lines := strings.Split(string(b), "\n")
   //// "string", [] if not empty
   userMap := make(map[string][]Command)
+
+  loadBalanceMap := make(map[string]string)
+
   for _, line := range lines {
     line = strings.Trim(line, "\n\r \t")
     parts := strings.Split(line, ",")
@@ -274,6 +278,24 @@ func main() {
     // fmt.Println(commandType)
     // transactionNum, commandType := strings.Split(parts[0], " ")
     
+    ip, ok := loadBalanceMap[userId]; ok {
+      fmt.Println("Found ip: ", ip)
+    } else {
+      req, _ := http.NewRequest(GET, lburl+userId, nil)
+      req.Header.Add("Content-Type","application/json") 
+      resp, e := http.DefaultClient.Do(req)
+
+      if (e!= nil){
+        panic(e)
+    }
+    
+    break; 
+
+    defer resp.Body.Close()    
+    bs, _ := ioutil.ReadAll(resp.Body)
+    return fmt.Sprintln(string(bs))
+    }
+
     switch commandType{
     case "ADD":
       a64, err := strconv.ParseInt(strings.Replace(parts[2],".","",-1),10,0)
