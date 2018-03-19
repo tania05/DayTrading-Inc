@@ -2,9 +2,13 @@ package database
 
 import (
 	"webserver/internal/money"
-  "webserver/internal/logger"
-  "webserver/internal/context"
-  "sync"
+	"webserver/internal/logger"
+	"webserver/internal/context"
+	"sync"
+
+	//"database/sql"
+	//_ "github.com/lib/pq"
+	//"fmt"
 )
 
 type Holding interface {
@@ -30,13 +34,15 @@ type MoneyHolding struct {
 
 var userMap map[string]money.Money
 var stockMap map[string]map[string]int
-var nextTransactionId int64
 var mutex sync.Mutex
+
+//func attemptOpenConnection() error {
+//	db, err = sql.Open("postgres", fmt.Sprintf("user=%s password=%s dbname=%s host=%s"))
+//}
 
 func init() {
 	userMap = make(map[string]money.Money)
 	stockMap = make(map[string]map[string]int)
-  nextTransactionId = 1
 }
 
 func (hold StockHolding) pay(ctx *context.Context) error {

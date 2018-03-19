@@ -4,6 +4,7 @@ services:
   webserver:
     depends_on:
       - redis
+      - database
     build:
       args:
         - buildpath=webserver
@@ -23,3 +24,14 @@ services:
     image: redis:4.0.8-alpine
     ports:
      - "6379:6379"
+
+  database:
+    image: postgres:10.3-alpine
+    ports:
+     - "5432:5432"
+    environment:
+      restart: always
+    build:
+      context: database
+      dockerfile: Dockerfile
+

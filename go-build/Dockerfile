@@ -10,6 +10,7 @@ RUN go get github.com/BurntSushi/toml
 RUN go get github.com/go-redis/redis
 RUN go get github.com/go-redis/cache
 RUN go get github.com/vmihailenco/msgpack
+RUN go get github.com/lib/pq
 
 
 ADD . /app/src
