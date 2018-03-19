@@ -14,5 +14,6 @@ Port = 6379
 Username = "postgres"
 Password = "mysecretpass"
 Database = "quote"
-Domain = "postgres"
+Domain = "database"
 Port = 5432
+SSLMode = "disable"

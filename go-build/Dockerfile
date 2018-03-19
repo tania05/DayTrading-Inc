@@ -12,7 +12,6 @@ RUN go get github.com/go-redis/cache
 RUN go get github.com/vmihailenco/msgpack
 RUN go get github.com/lib/pq
 
-
 ADD . /app/src
 
 RUN cd /app/src/$buildpath && go build && go install

@@ -19,6 +19,15 @@ type Configuration struct {
 		Domain string
 		Port int
 	}
+
+	Database struct {
+		Username string
+		Password string
+		Database string
+		Domain string
+		Port int
+		SSLMode string
+	}
 }
 
 var GlobalConfig Configuration

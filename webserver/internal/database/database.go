@@ -4,11 +4,13 @@ import (
 	"webserver/internal/money"
 	"webserver/internal/logger"
 	"webserver/internal/context"
+	"webserver/internal/config"
 	"sync"
 
-	//"database/sql"
-	//_ "github.com/lib/pq"
-	//"fmt"
+	"database/sql"
+	_ "github.com/lib/pq"
+	"fmt"
+	"time"
 )
 
 type Holding interface {
@@ -36,13 +38,43 @@ var userMap map[string]money.Money
 var stockMap map[string]map[string]int
 var mutex sync.Mutex
 
-//func attemptOpenConnection() error {
-//	db, err = sql.Open("postgres", fmt.Sprintf("user=%s password=%s dbname=%s host=%s"))
-//}
+func waitForConnection() error {
+	dbinfo := fmt.Sprintf("user=%s password=%s dbname=%s host=%s port=%d sslmode=%s",
+			config.GlobalConfig.Database.Username,
+			config.GlobalConfig.Database.Password,
+			config.GlobalConfig.Database.Database,
+			config.GlobalConfig.Database.Domain,
+			config.GlobalConfig.Database.Port,
+			config.GlobalConfig.Database.SSLMode)
+
+	db, err := sql.Open("postgres", dbinfo)
+	if err != nil {
+		panic(err)
+	}
+
+	for {
+		fmt.Printf("Beginning test ping using configuration %s\n", dbinfo)
+		pingErr := db.Ping()
+		if pingErr != nil {
+			fmt.Println(pingErr)
+			fmt.Println("Retrying in 5s")
+			time.Sleep(time.Second * 5)
+			continue
+		}
+
+		break
+	}
+
+	fmt.Println("database ready... ping was successful")
+
+	return nil
+}
 
 func init() {
 	userMap = make(map[string]money.Money)
 	stockMap = make(map[string]map[string]int)
+
+	waitForConnection()
 }
 
 func (hold StockHolding) pay(ctx *context.Context) error {
