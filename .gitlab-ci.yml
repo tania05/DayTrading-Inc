@@ -23,4 +23,4 @@ compile:loadgenerator:
     - go build -race -ldflags "-extldflags '-static'" -o $CI_PROJECT_DIR/out/load-generator
   artifacts:
     paths:
-    - out/webserver
+    - out/load-generator
