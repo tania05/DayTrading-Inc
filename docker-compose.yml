@@ -2,6 +2,11 @@ version: '3'
 
 services:
   webserver:
+    # deploy:
+      # placement:
+        # constraints:
+          # - node.role == manager
+      # replicas: 5
     depends_on:
       - redis
       - database
