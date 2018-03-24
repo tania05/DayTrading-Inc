@@ -278,23 +278,24 @@ func main() {
     // fmt.Println(commandType)
     // transactionNum, commandType := strings.Split(parts[0], " ")
     
-    ip, ok := loadBalanceMap[userId]; ok {
+    ip, ok := loadBalanceMap[userId]
+    if (ok) {
       fmt.Println("Found ip: ", ip)
     } else {
-      req, _ := http.NewRequest(GET, lburl+userId, nil)
+      req, _ := http.NewRequest("GET", lburl+"/users", nil)
       req.Header.Add("Content-Type","application/json") 
       resp, e := http.DefaultClient.Do(req)
 
       if (e!= nil){
         panic(e)
+      }
+      defer resp.Body.Close()    
+      bs, _ := ioutil.ReadAll(resp.Body)
+      fmt.Sprintln(string(bs))
     }
-    
-    break; 
 
-    defer resp.Body.Close()    
-    bs, _ := ioutil.ReadAll(resp.Body)
-    return fmt.Sprintln(string(bs))
-    }
+  
+    
 
     switch commandType{
     case "ADD":

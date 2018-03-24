@@ -5,6 +5,7 @@ import (
   "io"
   "github.com/gorilla/mux"
   "log"
+  "fmt"
 )
 
 var ipMap []string = []string{"128.333.3.3:9090"}
@@ -20,7 +21,8 @@ func GetServerHandler(w http.ResponseWriter, r *http.Request) {
 
 	ip := ipMap[0];
 
-	
+	fmt.Println("sent back")
+	fmt.Println(ipMap[0]);
 	defer r.Body.Close()
 	w.Header().Set("Content-Type", "text/plain")
 	w.Write([]byte(ip))
