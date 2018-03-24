@@ -11,7 +11,7 @@ services:
       dockerfile: go-build/Dockerfile
       context: .
     extra_hosts:
-      - "quoteserver:172.18.0.1"
+      - "quoteserver:192.168.1.148"
     networks:
       default:
         aliases:

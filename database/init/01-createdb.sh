@@ -40,10 +40,12 @@ EOSQL
         );
 
         CREATE TABLE transactions (
-            id INTEGER PRIMARY KEY,
+            id SERIAL PRIMARY KEY,
             user_id VARCHAR(64) REFERENCES users(id),
-            payable_id INTEGER REFERENCES holdings(id),
-            receivable_id INTEGER REFERENCES holdings(id),
+            money_amount INTEGER,
+            stock_sym VARCHAR(64),
+            stock_amount INTEGER,
+            is_buy BOOLEAN,
             created_at TIMESTAMP WITHOUT TIME ZONE
         );
 EOSQL

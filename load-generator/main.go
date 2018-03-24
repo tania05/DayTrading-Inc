@@ -236,8 +236,10 @@ func handleCommand(userMap map[string][]Command) {
   done := make(chan int, 250)
   for key, value := range userMap {
     go func(userId string, commands [] Command, done chan int){
-      for _, n := range commands{
+      total := len(commands)
+      for num, n := range commands{
         fmt.Println(n.request())
+        fmt.Printf("%d/%d\n", num, total)
       }
       done <- 0      
     }(key, value, done)
