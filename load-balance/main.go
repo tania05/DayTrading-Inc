@@ -2,6 +2,7 @@ package main
 
 import (
   "net/http"
+  "load-balance/config"
   "io"
   "github.com/gorilla/mux"
   "log"
@@ -65,6 +66,7 @@ func main() {
 	r.Path("/register").Methods("POST").HandlerFunc(RegisterIPHandler);
 
 	http.Handle("/", r)
-	addr := ":5555"
+	port := config.GlobalConfig.LoadBalancer.Port
+	addr := ":" + strconv.Itoa(port)
 	log.Fatal(http.ListenAndServe(addr, nil))
 }

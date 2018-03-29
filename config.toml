@@ -9,3 +9,7 @@ Port = 8080
 [Redis]
 Domain = "redis"
 Port = 6379
+
+[LoadBalancer]
+Domain - "loadbalance"
+port = 5555
