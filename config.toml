@@ -10,6 +10,14 @@ Port = 8080
 Domain = "redis"
 Port = 6379
 
+[Database]
+Username = "postgres"
+Password = "mysecretpass"
+Database = "quote"
+Domain = "database"
+Port = 5432
+SSLMode = "disable"
+
 [LoadBalancer]
-Domain - "loadbalance"
+Domain = "loadbalance"
 port = 5555

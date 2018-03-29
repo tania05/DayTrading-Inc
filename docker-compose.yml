@@ -5,13 +5,14 @@ services:
     image: 127.0.0.1:5000/webserver
     depends_on:
       - redis
+      - database
     build:
       args:
         - buildpath=webserver
       dockerfile: go-build/Dockerfile
       context: .
     extra_hosts:
-      - "quoteserver:172.18.0.1"
+      - "quoteserver:192.168.1.148"
     networks:
       default:
         aliases:
@@ -23,6 +24,17 @@ services:
     image: redis:4.0.8-alpine
     ports:
      - "6379:6379"
+     
+  database:
+    image: postgres:10.3-alpine
+    ports:
+     - "5432:5432"
+    environment:
+      restart: always
+    build:
+      context: database
+      dockerfile: Dockerfile
+
   loadbalancer:
     image: 127.0.0.1:5000/loadbalancer
     build:
