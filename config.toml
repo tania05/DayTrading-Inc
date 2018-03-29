@@ -17,3 +17,7 @@ Database = "quote"
 Domain = "database"
 Port = 5432
 SSLMode = "disable"
+
+[LoadBalancer]
+Domain = "loadbalance"
+port = 5555

@@ -2,6 +2,7 @@ version: '3'
 
 services:
   webserver:
+    image: 127.0.0.1:5000/webserver
     depends_on:
       - redis
       - database
@@ -19,12 +20,11 @@ services:
     command: /app/bin/webserver
     ports:
      - "8000:8080"
-
   redis:
     image: redis:4.0.8-alpine
     ports:
      - "6379:6379"
-
+     
   database:
     image: postgres:10.3-alpine
     ports:
@@ -35,3 +35,16 @@ services:
       context: database
       dockerfile: Dockerfile
 
+  loadbalancer:
+    image: 127.0.0.1:5000/loadbalancer
+    build:
+      args:
+        - buildpath=load-balance
+      dockerfile: go/Dockerfile
+      context: .
+    networks:
+      default:
+        aliases:
+          - loadbalancer
+    ports:
+      - 5555:5555

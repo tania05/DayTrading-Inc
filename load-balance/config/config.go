@@ -20,15 +20,6 @@ type Configuration struct {
 		Port int
 	}
 
-	Database struct {
-		Username string
-		Password string
-		Database string
-		Domain string
-		Port int
-		SSLMode string
-    }
-	
 	LoadBalancer struct {
 		Domain string
 		Port int

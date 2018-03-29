@@ -24,3 +24,4 @@ compile:loadgenerator:
   artifacts:
     paths:
     - out/load-generator
+    - out/webserver
