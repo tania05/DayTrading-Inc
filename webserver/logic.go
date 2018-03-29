@@ -75,11 +75,6 @@ func getQuote(ctx *context.Context) money.Money {
 	addr := config.GlobalConfig.QuoteServer.Domain+ ":" + strconv.Itoa(config.GlobalConfig.QuoteServer.Port)
 
 	fmt.Println("Contacting " + addr)
-
-	qmutex.Lock()
-	time.Sleep(30000000)
-	qmutex.Unlock()
-
 	conn, err := net.Dial("tcp", addr)
 
 	defer conn.Close()
