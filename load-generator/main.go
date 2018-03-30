@@ -114,16 +114,22 @@ type Command interface {
   request() string
 }
 
-const url = "http://localhost:8000"
 const lburl = "http://localhost:5555"
 const post = "POST"
 const put = "PUT"
 const delete = "DELETE"
 const get = "GET"
 
-func postRequest(path string, reqType string, payload interface{}) string{
+var loadBalanceMap map[string]string = make(map[string]string)
+
+
+func postRequest(path string, url string, reqType string, payload interface{}) string{
   buff, _ := json.Marshal(payload)
-  req, _ := http.NewRequest(strings.ToUpper(reqType), url+path, bytes.NewBuffer(buff))
+  fmt.Println(url)
+  req, e := http.NewRequest(strings.ToUpper(reqType), "http://"+url+path, bytes.NewBuffer(buff))
+  if (e!= nil){
+    panic(e)
+  }
   req.Header.Add("Content-Type","application/json") 
   resp, e := http.DefaultClient.Do(req)
 
@@ -136,8 +142,8 @@ func postRequest(path string, reqType string, payload interface{}) string{
   return fmt.Sprintln(string(bs))
 }
 
-func getRequest(path string) string{ 
-  req, _ := http.NewRequest("GET", url+path, nil)
+func getRequest(path string, url string) string{ 
+  req, _ := http.NewRequest("GET", "http://"+url+path, nil)
   resp, e := http.DefaultClient.Do(req)
   if (e!= nil){
     panic(e)
@@ -150,87 +156,87 @@ func getRequest(path string) string{
 
 func (command AddCommand) request() string {
   //return fmt.Sprintln("AddCommand")
-  return postRequest("/users", post, command)
+  return postRequest("/users", loadBalanceMap[command.UserId], post, command)
 }
 
 func (command QuoteCommand) request() string {
   // return fmt.Sprintln("QuoteCommand")  
-  return postRequest("/stocks/"+command.StockSymbol+"/quote", post, command)
+  return postRequest("/stocks/"+command.StockSymbol+"/quote", loadBalanceMap[command.UserId], post, command)
 }
 
 func (command BuyCommand) request() string {
   // return fmt.Sprintln("BuyCommand")  
-  return postRequest("/stocks/"+command.StockSymbol+"/buy", post, command)
+  return postRequest("/stocks/"+command.StockSymbol+"/buy", loadBalanceMap[command.UserId], post, command)
 }
 
 func (command CommitBuyCommand) request() string {
   // return fmt.Sprintln("CommitBuyCommand")  
-  return postRequest("/stocks/buy", put, command)
+  return postRequest("/stocks/buy", loadBalanceMap[command.UserId], put, command)
 }
 
 func (command CancelBuyCommand) request() string {
   // return fmt.Sprintln("CancelBuyCommand")
-  return postRequest("/stocks/buy", delete, command)
+  return postRequest("/stocks/buy", loadBalanceMap[command.UserId], delete, command)
 }
 
 func (command SellCommand) request() string {
   // return fmt.Sprintln("SellCommand")
-  return postRequest("/stocks/"+command.StockSymbol+"/sell", post, command)
+  return postRequest("/stocks/"+command.StockSymbol+"/sell", loadBalanceMap[command.UserId], post, command)
 }
 
 func (command CommitSellCommand) request() string {
   // return fmt.Sprintln("CommitSellCommand")
-  return postRequest("/stocks/sell", put, command)
+  return postRequest("/stocks/sell", loadBalanceMap[command.UserId], put, command)
 }
 
 func (command CancelSellCommand) request() string {
   // return fmt.Sprintln("CancelSellCommand")
-  return postRequest("/stocks/sell", delete, command)
+  return postRequest("/stocks/sell", loadBalanceMap[command.UserId], delete, command)
 }
 
 func (command SetBuyAmountCommand) request() string {
   // return fmt.Sprintln("SetBuyAmountCommand")
-  return postRequest("/triggers/"+command.StockSymbol+"/buy", post, command)
+  return postRequest("/triggers/"+command.StockSymbol+"/buy", loadBalanceMap[command.UserId], post, command)
 }
 
 func (command CancelSetBuyCommand) request() string {
   // return fmt.Sprintln("CancelSetBuyCommand")
-  return postRequest("/triggers/"+command.StockSymbol+"/buy", post, command)
+  return postRequest("/triggers/"+command.StockSymbol+"/buy", loadBalanceMap[command.UserId], post, command)
 }
 
 func (command SetBuyTriggerCommand) request() string {
   // return fmt.Sprintln("SetBuyTriggerCommand")
-  return postRequest("/triggers/"+command.StockSymbol+"/buy", post, command)
+  return postRequest("/triggers/"+command.StockSymbol+"/buy", loadBalanceMap[command.UserId], post, command)
 }
 
 func (command SetSellAmountCommand) request() string {
   // return fmt.Sprintln("SetSellAmountCommand")
-  return postRequest("/triggers/"+command.StockSymbol+"/sell", post, command)
+  return postRequest("/triggers/"+command.StockSymbol+"/sell", loadBalanceMap[command.UserId], post, command)
 }
 
 func (command CancelSetSellCommand) request() string {
   // return fmt.Sprintln("CanceletSellCommand")
-  return postRequest("/triggers/"+command.StockSymbol+"/sell", post, command)
+  return postRequest("/triggers/"+command.StockSymbol+"/sell", post, loadBalanceMap[command.UserId], command)
 }
 
 func (command SetSellTriggerCommand) request() string {
   // return fmt.Sprintln("SetSellTriggerCommand")
-  return postRequest("/triggers/"+command.StockSymbol+"/sell", post, command)
+  return postRequest("/triggers/"+command.StockSymbol+"/sell", loadBalanceMap[command.UserId], post, command)
 }
 
 func (command DumplogCommand) request() string {
   // return fmt.Sprintln("DumplogCommand")
-  return postRequest("/"+command.UserId+"/dump", post, command)
+  return postRequest("/"+command.UserId+"/dump", loadBalanceMap[command.UserId], post, command)
 }
 
 func (command AdminDumblogCommand) request() string {
   // return fmt.Sprintln("AdminDumpLogCommand")
-  return postRequest("/dump", post, command)
+  return postRequest("/dump", lburl, post, command)
 }
 
 func (command DisplaySummary) request() string {
   // return fmt.Sprintln("DisplaySummaryCommand")
-  return postRequest("/users/" + command.UserId + "/summary", post, command)
+  return postRequest("/users/" + command.UserId + "/summary", loadBalanceMap[command.UserId], post, command)
 }
 
 func handleCommand(userMap map[string][]Command) {
@@ -250,7 +256,7 @@ func handleCommand(userMap map[string][]Command) {
 }
 
 func main() {
-  b, err := ioutil.ReadFile("100User_testWorkLoad")
+  b, err := ioutil.ReadFile("10userWorkLoad.txt")
 
   if (err != nil) {
     panic(err)
@@ -260,7 +266,6 @@ func main() {
   //// "string", [] if not empty
   userMap := make(map[string][]Command)
 
-  loadBalanceMap := make(map[string]string)
 
   for _, line := range lines {
     line = strings.Trim(line, "\n\r \t")
@@ -278,23 +283,25 @@ func main() {
     // fmt.Println(commandType)
     // transactionNum, commandType := strings.Split(parts[0], " ")
     
-    ip, ok := loadBalanceMap[userId]; ok {
+    ip, ok := loadBalanceMap[userId]
+    if (ok) {
       fmt.Println("Found ip: ", ip)
     } else {
-      req, _ := http.NewRequest(GET, lburl+userId, nil)
+      req, _ := http.NewRequest("GET", lburl+"/users", nil)
       req.Header.Add("Content-Type","application/json") 
       resp, e := http.DefaultClient.Do(req)
 
       if (e!= nil){
         panic(e)
+      }
+      defer resp.Body.Close()    
+      bs, _ := ioutil.ReadAll(resp.Body)
+      loadBalanceMap[userId] = string(bs)
+      fmt.Println(string(bs))
     }
-    
-    break; 
 
-    defer resp.Body.Close()    
-    bs, _ := ioutil.ReadAll(resp.Body)
-    return fmt.Sprintln(string(bs))
-    }
+  
+    
 
     switch commandType{
     case "ADD":

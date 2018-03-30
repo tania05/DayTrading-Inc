@@ -11,9 +11,19 @@ import (
   "webserver/internal/logger"
   "webserver/internal/context"
   "io/ioutil"
-	"webserver/internal/config"
+	"common/config"
 	"strconv"
+	"fmt"
+	"strings"
+	"bytes"
+	"net"
 )
+
+
+type RegisterServerCommand struct {
+	IP string
+	Port int
+}
 
 type AddCommand struct {
   TransactionNum int64
@@ -402,6 +412,36 @@ func GetDisplaySummaryHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func postRequest(path string, reqType string, payload interface{}) string{
+  buff, _ := json.Marshal(payload)
+  req, _ := http.NewRequest(strings.ToUpper(reqType), path, bytes.NewBuffer(buff))
+  req.Header.Add("Content-Type","application/json") 
+  resp, e := http.DefaultClient.Do(req)
+
+  if (e!= nil){
+    panic(e)
+  }
+  
+  defer resp.Body.Close()    
+  bs, _ := ioutil.ReadAll(resp.Body)
+  return string(bs)
+}
+
+func RegisterServer(port int) string{
+	conn, err := net.Dial("udp", "1.2.3.4:80") //dummy connect, ill explain later.
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer conn.Close()
+
+    localAddr := conn.LocalAddr().(*net.UDPAddr)
+
+    payload := RegisterServerCommand{IP: localAddr.IP.String(), Port: port}
+    return postRequest("http://" +
+    	config.GlobalConfig.LoadBalancer.Domain + ":" + strconv.Itoa(config.GlobalConfig.LoadBalancer.Port) +
+		"/register", "POST", payload)
+}
+
 func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/", HelloHandler)
@@ -426,7 +466,8 @@ func main() {
 
 	http.Handle("/", r)
 
-	port := strconv.Itoa(config.GlobalConfig.WebServer.Port)
-	addr := ":" + port
+	port := config.GlobalConfig.WebServer.Port
+	addr := ":" + strconv.Itoa(port)
+	fmt.Println(RegisterServer(port))
 	log.Fatal(http.ListenAndServe(addr, nil))
 }

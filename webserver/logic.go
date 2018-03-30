@@ -13,7 +13,7 @@ import (
 	"webserver/internal/context"
   "webserver/internal/trigger"
 	"strings"
-	"webserver/internal/config"
+	"common/config"
 	"github.com/go-redis/redis"
 	"github.com/go-redis/cache"
 	"encoding/json"
@@ -28,7 +28,6 @@ type QuoteCacheItem struct {
 var buystack map[string][]database.Transaction = make(map[string][]database.Transaction)
 var sellstack map[string][]database.Transaction = make(map[string][]database.Transaction)
 var mutex sync.Mutex
-var qmutex sync.Mutex
 
 var redisCodec *cache.Codec
 
@@ -48,6 +47,7 @@ func getClient() *cache.Codec {
 			fmt.Println(pingError)
 			return nil
 		}
+		fmt.Println("Connected to Redis")
 
 		redisCodec = &cache.Codec{
 			Redis: redisClient,
@@ -57,10 +57,6 @@ func getClient() *cache.Codec {
 	}
 
 	return redisCodec
-}
-
-func getQuotetest(ctx *context.Context) money.Money{
-	return money.Money(23)
 }
 
 func getQuote(ctx *context.Context) money.Money {
@@ -78,9 +74,7 @@ func getQuote(ctx *context.Context) money.Money {
 
 	addr := config.GlobalConfig.QuoteServer.Domain+ ":" + strconv.Itoa(config.GlobalConfig.QuoteServer.Port)
 
-	qmutex.Lock()
-	time.Sleep(30000000)
-	qmutex.Unlock()
+	fmt.Println("Contacting " + addr)
 	conn, err := net.Dial("tcp", addr)
 
 	defer conn.Close()
