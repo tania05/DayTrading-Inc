@@ -62,8 +62,8 @@ func RegisterIPHandler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/", HelloHandler)
-	r.Path("/users").Methods("GET").HandlerFunc(GetServerHandler);
-	r.Path("/register").Methods("POST").HandlerFunc(RegisterIPHandler);
+	r.Path("/users").Methods("GET").HandlerFunc(GetServerHandler)
+	r.Path("/register").Methods("POST").HandlerFunc(RegisterIPHandler)
 
 	http.Handle("/", r)
 	port := config.GlobalConfig.LoadBalancer.Port

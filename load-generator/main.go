@@ -114,7 +114,6 @@ type Command interface {
   request() string
 }
 
-var url string = "http://localhost:8000"
 const lburl = "http://localhost:5555"
 const post = "POST"
 const put = "PUT"
@@ -232,7 +231,7 @@ func (command DumplogCommand) request() string {
 
 func (command AdminDumblogCommand) request() string {
   // return fmt.Sprintln("AdminDumpLogCommand")
-  return postRequest("/dump", url, post, command)
+  return postRequest("/dump", lburl, post, command)
 }
 
 func (command DisplaySummary) request() string {
@@ -298,7 +297,6 @@ func main() {
       defer resp.Body.Close()    
       bs, _ := ioutil.ReadAll(resp.Body)
       loadBalanceMap[userId] = string(bs)
-      url = string(bs)
       fmt.Println(string(bs))
     }
 

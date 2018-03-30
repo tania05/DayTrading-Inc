@@ -11,6 +11,9 @@ import (
 	_ "github.com/lib/pq"
 	"fmt"
 	"time"
+	"os"
+	"strconv"
+	"hash/fnv"
 )
 
 type Holding interface {
@@ -40,42 +43,65 @@ type queryable interface {
 }
 
 var mutex sync.Mutex
-var database *sql.DB
+var databases []*sql.DB
 
-func waitForConnection() *sql.DB {
-	dbinfo := fmt.Sprintf("user=%s password=%s dbname=%s host=%s port=%d sslmode=%s",
-		config.GlobalConfig.Database.Username,
-		config.GlobalConfig.Database.Password,
-		config.GlobalConfig.Database.Database,
-		config.GlobalConfig.Database.Domain,
-		config.GlobalConfig.Database.Port,
-		config.GlobalConfig.Database.SSLMode)
-
-	db, err := sql.Open("postgres", dbinfo)
+func waitForConnection() {
+	databaseCount := os.Getenv("DATABASE_COUNT")
+	count, err := strconv.Atoi(databaseCount)
 	if err != nil {
-		panic(err)
+		panic("Could not read environment variable")
 	}
 
-	for {
-		fmt.Printf("Beginning test ping using configuration %s\n", dbinfo)
-		pingErr := db.Ping()
-		if pingErr != nil {
-			fmt.Println(pingErr)
-			fmt.Println("Retrying in 1s")
-			time.Sleep(time.Second * 1)
-			continue
+	databases = make([]*sql.DB, count)
+	for i := 0; i < count; i++ {
+		dbinfo := fmt.Sprintf("user=%s password=%s dbname=%s host=%s%d port=%d sslmode=%s",
+			config.GlobalConfig.Database.Username,
+			config.GlobalConfig.Database.Password,
+			config.GlobalConfig.Database.Database,
+			config.GlobalConfig.Database.Domain, i,
+			config.GlobalConfig.Database.Port,
+			config.GlobalConfig.Database.SSLMode)
+
+		db, err := sql.Open("postgres", dbinfo)
+		if err != nil {
+			panic(err)
 		}
 
-		break
+		for {
+			fmt.Printf("Beginning test ping using configuration %s\n", dbinfo)
+			pingErr := db.Ping()
+			if pingErr != nil {
+				fmt.Println(pingErr)
+				fmt.Println("Retrying in 1s")
+				time.Sleep(time.Second * 1)
+				continue
+			}
+
+			break
+		}
+
+		fmt.Printf("database %d ready... ping was successful\n", i)
+
+		databases[i] = db
 	}
+}
 
-	fmt.Println("database ready... ping was successful")
+func getDatabase(userId string) *sql.DB {
+	digest := fnv.New32a()
+	digest.Write([]byte(userId))
 
-	return db
+	hash := digest.Sum32()
+	hashInt := int(hash)
+	if hashInt < 0 {
+		hashInt = hashInt * -1
+	}
+	index := hashInt % len(databases)
+	fmt.Printf("User has hased to database %d\n", index)
+	return databases[index]
 }
 
 func init() {
-	database = waitForConnection()
+	waitForConnection()
 }
 
 func (hold StockHolding) pay(target queryable, ctx *context.Context) error {
@@ -154,20 +180,20 @@ func (hold MoneyHolding) receive(target queryable, ctx *context.Context) error {
 
 func AddFunds(ctx *context.Context, amount money.Money) error {
 	receivable := MoneyHolding{UserId: ctx.UserId, Amount: amount}
-	err := receivable.receive(database, ctx)
+	err := receivable.receive(getDatabase(ctx.UserId), ctx)
 	return err
 }
 
 //TODO
 func attemptAllocate(ctx *context.Context, trans Transaction) (Transaction, error) {
 
-	tx, err := database.Begin()
+	tx, err := getDatabase(ctx.UserId).Begin()
 	if err != nil {
 		return Transaction{}, ctx.MakeError("Failed to initialize transaction context")
 	}
 	defer tx.Rollback()
 
-	err = trans.payable.pay(database, ctx)
+	err = trans.payable.pay(getDatabase(ctx.UserId), ctx)
 	if err != nil {
 		return Transaction{}, ctx.MakeError(err.Error())
 	}
@@ -201,7 +227,7 @@ func attemptAllocate(ctx *context.Context, trans Transaction) (Transaction, erro
 		panic("Unknown holding type")
 	}
 
-	_, err = database.Exec(`
+	_, err = getDatabase(ctx.UserId).Exec(`
 		INSERT INTO transactions(user_id, money_amount, stock_sym, stock_amount, is_buy, created_at)
 			VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
 	`, ctx.UserId, int(moneyHolding.Amount), stockHolding.StockSymbol, stockHolding.Amount, isBuy)
@@ -240,7 +266,7 @@ func AllocateStocks(ctx *context.Context, stockAmount int, amount money.Money) (
 func HoldStocks(ctx *context.Context, amount int) (Holding, error) {
 	hold := StockHolding{UserId: ctx.UserId, StockSymbol: ctx.StockSymbol, Amount: amount}
 
-	err := hold.pay(database, ctx)
+	err := hold.pay(getDatabase(ctx.UserId), ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -251,7 +277,7 @@ func HoldStocks(ctx *context.Context, amount int) (Holding, error) {
 func HoldMoney(ctx *context.Context, amount money.Money) (Holding, error) {
 	hold := MoneyHolding{UserId: ctx.UserId, Amount: amount}
 
-	err := hold.pay(database, ctx)
+	err := hold.pay(getDatabase(ctx.UserId), ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -262,7 +288,7 @@ func HoldMoney(ctx *context.Context, amount money.Money) (Holding, error) {
 //TODO return and execute should be atomic
 func Return(ctx *context.Context, holds ... Holding) error {
 
-	tx, err := database.Begin()
+	tx, err := getDatabase(ctx.UserId).Begin()
 	if err != nil {
 		return err
 	}
@@ -281,9 +307,9 @@ func Return(ctx *context.Context, holds ... Holding) error {
 }
 
 func Commit(ctx *context.Context, trans Transaction) error {
-	return trans.receivable.receive(database, ctx)
+	return trans.receivable.receive(getDatabase(ctx.UserId), ctx)
 }
 
 func Cancel(ctx *context.Context, trans Transaction) error {
-	return trans.payable.receive(database, ctx)
+	return trans.payable.receive(getDatabase(ctx.UserId), ctx)
 }

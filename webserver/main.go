@@ -20,8 +20,6 @@ import (
 )
 
 
-const lburl = "http://localhost:5555"
-
 type RegisterServerCommand struct {
 	IP string
 	Port int
@@ -416,7 +414,7 @@ func GetDisplaySummaryHandler(w http.ResponseWriter, r *http.Request) {
 
 func postRequest(path string, reqType string, payload interface{}) string{
   buff, _ := json.Marshal(payload)
-  req, _ := http.NewRequest(strings.ToUpper(reqType), lburl+path, bytes.NewBuffer(buff))
+  req, _ := http.NewRequest(strings.ToUpper(reqType), path, bytes.NewBuffer(buff))
   req.Header.Add("Content-Type","application/json") 
   resp, e := http.DefaultClient.Do(req)
 
@@ -439,7 +437,9 @@ func RegisterServer(port int) string{
     localAddr := conn.LocalAddr().(*net.UDPAddr)
 
     payload := RegisterServerCommand{IP: localAddr.IP.String(), Port: port}
-    return postRequest("/register", "POST", payload)
+    return postRequest("http://" +
+    	config.GlobalConfig.LoadBalancer.Domain + ":" + strconv.Itoa(config.GlobalConfig.LoadBalancer.Port) +
+		"/register", "POST", payload)
 }
 
 func main() {

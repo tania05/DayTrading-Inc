@@ -5,7 +5,9 @@ services:
     image: 127.0.0.1:5000/webserver
     depends_on:
       - redis
-      - database
+      - database0
+      - database1
+      - database2
     build:
       args:
         - buildpath=webserver
@@ -14,37 +16,50 @@ services:
     extra_hosts:
       - "quoteserver:192.168.1.148"
     networks:
-      default:
-        aliases:
-          - webserver
+        - frontend
+        - backend
     command: /app/bin/webserver
     ports:
      - "8000:8080"
+    environment:
+      - "DATABASE_COUNT=3"
+
   redis:
     image: redis:4.0.8-alpine
     ports:
      - "6379:6379"
      
-  database:
-    image: postgres:10.3-alpine
+  database0: &database
+    image: database
     ports:
      - "5432:5432"
     environment:
       restart: always
+    networks:
+        - backend
     build:
       context: database
       dockerfile: Dockerfile
+
+  database1:
+    <<: *database
+  database2:
+    <<: *database
 
   loadbalancer:
     image: 127.0.0.1:5000/loadbalancer
     build:
       args:
-        - buildpath=load-balance
+        - buildpath=load-balancer
       dockerfile: go/Dockerfile
       context: .
     networks:
-      default:
-        aliases:
-          - loadbalancer
+        - frontend
+    command: /app/bin/load-balancer
     ports:
       - 5555:5555
+
+networks:
+    frontend:
+    backend:
+        internal: true

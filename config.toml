@@ -19,5 +19,5 @@ Port = 5432
 SSLMode = "disable"
 
 [LoadBalancer]
-Domain = "loadbalance"
+Domain = "loadbalancer"
 port = 5555
