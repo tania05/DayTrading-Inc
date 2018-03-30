@@ -2,7 +2,7 @@ package main
 
 import (
   "net/http"
-  "load-balance/config"
+  "common/config"
   "io"
   "github.com/gorilla/mux"
   "log"

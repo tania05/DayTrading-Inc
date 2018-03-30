@@ -13,7 +13,7 @@ import (
 	"webserver/internal/context"
   "webserver/internal/trigger"
 	"strings"
-	"webserver/internal/config"
+	"common/config"
 	"github.com/go-redis/redis"
 	"github.com/go-redis/cache"
 	"encoding/json"

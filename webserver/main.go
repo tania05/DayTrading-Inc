@@ -11,7 +11,7 @@ import (
   "webserver/internal/logger"
   "webserver/internal/context"
   "io/ioutil"
-	"webserver/internal/config"
+	"common/config"
 	"strconv"
 	"fmt"
 	"strings"

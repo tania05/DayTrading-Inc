@@ -4,7 +4,7 @@ import (
 	"webserver/internal/money"
 	"webserver/internal/logger"
 	"webserver/internal/context"
-	"webserver/internal/config"
+	"common/config"
 	"sync"
 
 	"database/sql"
