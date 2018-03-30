@@ -285,6 +285,62 @@ func HoldMoney(ctx *context.Context, amount money.Money) (Holding, error) {
 	return hold, nil
 }
 
+func CommitTransaction(ctx *context.Context, isBuy bool) error{
+	tx, err := getDatabase(ctx.UserId).Begin()
+	if err != nil {
+		return ctx.MakeError("Failed to initalize transaction")
+	}
+	defer tx.Rollback()
+
+	row := tx.QueryRow(`
+		WITH subquery AS (
+			SELECT id AS id
+			FROM transactions
+			WHERE user_id = $1
+				  AND is_buy = $2
+			ORDER BY created_at DESC
+			LIMIT 1
+		)
+		DELETE FROM transactions
+		  WHERE transactions.id = (SELECT id from subquery)
+		RETURNING money_amount, stock_sym, stock_amount
+	`, ctx.UserId, isBuy)
+
+	var moneyAmount int
+	var stockSym string
+	var stockAmount int
+	err = row.Scan(&moneyAmount, &stockSym, &stockAmount)
+	if err != nil {
+		return ctx.MakeError("Failed to find recent transaction for user")
+	}
+
+	moneyHolding := MoneyHolding{UserId:ctx.UserId, Amount:money.Money(moneyAmount)}
+	stockHolding := StockHolding{UserId:ctx.UserId, StockSymbol:stockSym, Amount:stockAmount}
+
+	if isBuy {
+		err = moneyHolding.pay(tx, ctx)
+		if err != nil {
+			return err
+		}
+		err = stockHolding.receive(tx, ctx)
+		if err != nil {
+			return err
+		}
+	} else {
+		err = moneyHolding.pay(tx, ctx)
+		if err != nil {
+			return err
+		}
+		err = stockHolding.receive(tx, ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	tx.Commit()
+	return nil
+}
+
 //TODO return and execute should be atomic
 func Return(ctx *context.Context, holds ... Holding) error {
 
@@ -306,10 +362,3 @@ func Return(ctx *context.Context, holds ... Holding) error {
 	return nil
 }
 
-func Commit(ctx *context.Context, trans Transaction) error {
-	return trans.receivable.receive(getDatabase(ctx.UserId), ctx)
-}
-
-func Cancel(ctx *context.Context, trans Transaction) error {
-	return trans.payable.receive(getDatabase(ctx.UserId), ctx)
-}
