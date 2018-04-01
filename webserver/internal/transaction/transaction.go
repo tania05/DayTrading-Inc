@@ -1,24 +1,17 @@
-package database
+package transaction
 
 import (
 	"webserver/internal/money"
 	"webserver/internal/logger"
 	"webserver/internal/context"
-	"common/config"
-	"sync"
-
-	"database/sql"
 	_ "github.com/lib/pq"
 	"fmt"
-	"time"
-	"os"
-	"strconv"
-	"hash/fnv"
+	"common/database"
 )
 
 type Holding interface {
-	pay(queryable, *context.Context) error
-	receive(queryable, *context.Context) error
+	pay(database.Queryable, *context.Context) error
+	receive(database.Queryable, *context.Context) error
 }
 
 type Transaction struct {
@@ -38,74 +31,7 @@ type MoneyHolding struct {
 	Amount money.Money
 }
 
-type queryable interface {
-	QueryRow(query string, args ...interface{}) *sql.Row
-	Exec(query string, args ...interface{}) (sql.Result, error)
-}
-
-var mutex sync.Mutex
-var databases []*sql.DB
-
-func waitForConnection() {
-	databaseCount := os.Getenv("DATABASE_COUNT")
-	count, err := strconv.Atoi(databaseCount)
-	if err != nil {
-		panic("Could not read environment variable")
-	}
-
-	databases = make([]*sql.DB, count)
-	for i := 0; i < count; i++ {
-		dbinfo := fmt.Sprintf("user=%s password=%s dbname=%s host=%s%d port=%d sslmode=%s",
-			config.GlobalConfig.Database.Username,
-			config.GlobalConfig.Database.Password,
-			config.GlobalConfig.Database.Database,
-			config.GlobalConfig.Database.Domain, i,
-			config.GlobalConfig.Database.Port,
-			config.GlobalConfig.Database.SSLMode)
-
-		db, err := sql.Open("postgres", dbinfo)
-		if err != nil {
-			panic(err)
-		}
-
-		for {
-			fmt.Printf("Beginning test ping using configuration %s\n", dbinfo)
-			pingErr := db.Ping()
-			if pingErr != nil {
-				fmt.Println(pingErr)
-				fmt.Println("Retrying in 1s")
-				time.Sleep(time.Second * 1)
-				continue
-			}
-
-			break
-		}
-
-		fmt.Printf("database %d ready... ping was successful\n", i)
-
-		databases[i] = db
-	}
-}
-
-func getDatabase(userId string) *sql.DB {
-	digest := fnv.New32a()
-	digest.Write([]byte(userId))
-
-	hash := digest.Sum32()
-	hashInt := int(hash)
-	if hashInt < 0 {
-		hashInt = hashInt * -1
-	}
-	index := hashInt % len(databases)
-	fmt.Printf("User has hased to database %d\n", index)
-	return databases[index]
-}
-
-func init() {
-	waitForConnection()
-}
-
-func (hold StockHolding) pay(target queryable, ctx *context.Context) error {
+func (hold StockHolding) pay(target database.Queryable, ctx *context.Context) error {
 	row := target.QueryRow(`
 		UPDATE stocks
 			SET amount = amount - $3
@@ -123,7 +49,7 @@ func (hold StockHolding) pay(target queryable, ctx *context.Context) error {
 	return nil
 }
 
-func (hold StockHolding) receive(target queryable, ctx *context.Context) error {
+func (hold StockHolding) receive(target database.Queryable, ctx *context.Context) error {
 	row := target.QueryRow(`
 		INSERT INTO stocks(user_id, stock_sym, amount)
 			VALUES ($1, $2, $3)
@@ -140,7 +66,7 @@ func (hold StockHolding) receive(target queryable, ctx *context.Context) error {
 	return nil
 }
 
-func (hold MoneyHolding) pay(target queryable, ctx *context.Context) error {
+func (hold MoneyHolding) pay(target database.Queryable, ctx *context.Context) error {
 	row := target.QueryRow(`
 		UPDATE users
 			SET money = money - $2
@@ -160,7 +86,7 @@ func (hold MoneyHolding) pay(target queryable, ctx *context.Context) error {
 
 }
 
-func (hold MoneyHolding) receive(target queryable, ctx *context.Context) error {
+func (hold MoneyHolding) receive(target database.Queryable, ctx *context.Context) error {
 	row := target.QueryRow(`
 		INSERT INTO users(Id,money)
 			VALUES ($1, $2)
@@ -181,14 +107,14 @@ func (hold MoneyHolding) receive(target queryable, ctx *context.Context) error {
 
 func AddFunds(ctx *context.Context, amount money.Money) error {
 	receivable := MoneyHolding{UserId: ctx.UserId, Amount: amount}
-	err := receivable.receive(getDatabase(ctx.UserId), ctx)
+	err := receivable.receive(database.GetDatabase(ctx.UserId), ctx)
 	return err
 }
 
 //TODO
 func attemptAllocate(ctx *context.Context, trans Transaction) (Transaction, error) {
 	fmt.Println("Attempting allocation ", ctx, " trans ", trans)
-	tx, err := getDatabase(ctx.UserId).Begin()
+	tx, err := database.GetDatabase(ctx.UserId).Begin()
 	if err != nil {
 		return Transaction{}, ctx.MakeError("Failed to initialize transaction context")
 	}
@@ -270,7 +196,7 @@ func AllocateStocks(ctx *context.Context, stockAmount int, amount money.Money) (
 func HoldStocks(ctx *context.Context, amount int) (Holding, error) {
 	hold := StockHolding{UserId: ctx.UserId, StockSymbol: ctx.StockSymbol, Amount: amount}
 
-	err := hold.pay(getDatabase(ctx.UserId), ctx)
+	err := hold.pay(database.GetDatabase(ctx.UserId), ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -281,7 +207,7 @@ func HoldStocks(ctx *context.Context, amount int) (Holding, error) {
 func HoldMoney(ctx *context.Context, amount money.Money) (Holding, error) {
 	hold := MoneyHolding{UserId: ctx.UserId, Amount: amount}
 
-	err := hold.pay(getDatabase(ctx.UserId), ctx)
+	err := hold.pay(database.GetDatabase(ctx.UserId), ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -298,7 +224,7 @@ func CancelTransaction(ctx *context.Context, isBuy bool) error {
 }
 
 func CancelByTimeout(ctx *context.Context, txId int) error {
-	tx, err := getDatabase(ctx.UserId).Begin()
+	tx, err := database.GetDatabase(ctx.UserId).Begin()
 	if err != nil {
 		return ctx.MakeError("Failed to initalize transaction")
 	}
@@ -319,8 +245,8 @@ func CancelByTimeout(ctx *context.Context, txId int) error {
 		return nil // just means this was finshed by normal means
 	}
 
-	moneyHolding := MoneyHolding{UserId:ctx.UserId, Amount:money.Money(moneyAmount)}
-	stockHolding := StockHolding{UserId:ctx.UserId, StockSymbol:stockSym, Amount:stockAmount}
+	moneyHolding := MoneyHolding{UserId: ctx.UserId, Amount: money.Money(moneyAmount)}
+	stockHolding := StockHolding{UserId: ctx.UserId, StockSymbol: stockSym, Amount: stockAmount}
 
 	if !isBuy { //cancelling a sell or commiting a buy
 		err = stockHolding.receive(tx, ctx)
@@ -339,8 +265,8 @@ func CancelByTimeout(ctx *context.Context, txId int) error {
 
 }
 
-func commitOrCancelTransaction(ctx *context.Context, isBuy bool, isCommit bool) error{
-	tx, err := getDatabase(ctx.UserId).Begin()
+func commitOrCancelTransaction(ctx *context.Context, isBuy bool, isCommit bool) error {
+	tx, err := database.GetDatabase(ctx.UserId).Begin()
 	if err != nil {
 		return ctx.MakeError("Failed to initalize transaction")
 	}
@@ -368,8 +294,8 @@ func commitOrCancelTransaction(ctx *context.Context, isBuy bool, isCommit bool) 
 		return ctx.MakeError("Failed to find recent transaction for user")
 	}
 
-	moneyHolding := MoneyHolding{UserId:ctx.UserId, Amount:money.Money(moneyAmount)}
-	stockHolding := StockHolding{UserId:ctx.UserId, StockSymbol:stockSym, Amount:stockAmount}
+	moneyHolding := MoneyHolding{UserId: ctx.UserId, Amount: money.Money(moneyAmount)}
+	stockHolding := StockHolding{UserId: ctx.UserId, StockSymbol: stockSym, Amount: stockAmount}
 
 	if isBuy == isCommit { //cancelling a sell or commiting a buy
 		err = stockHolding.receive(tx, ctx)
@@ -390,7 +316,7 @@ func commitOrCancelTransaction(ctx *context.Context, isBuy bool, isCommit bool) 
 //TODO return and execute should be atomic
 func Return(ctx *context.Context, holds ... Holding) error {
 
-	tx, err := getDatabase(ctx.UserId).Begin()
+	tx, err := database.GetDatabase(ctx.UserId).Begin()
 	if err != nil {
 		return err
 	}
@@ -407,4 +333,3 @@ func Return(ctx *context.Context, holds ... Holding) error {
 	tx.Commit()
 	return nil
 }
-

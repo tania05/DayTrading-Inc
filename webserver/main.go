@@ -181,8 +181,8 @@ func PostBuyHandler(w http.ResponseWriter, r *http.Request) {
 	transact(ctx, 1, money.Money(payload.Amount))
 	w.WriteHeader(http.StatusCreated)
 	io.WriteString(w, "Buy Command!")
-	// fmt.Println(database.CheckFunds(payload.UserId))
-	// fmt.Println(database.CheckStock(payload.UserId, payload.StockSymbol))
+	// fmt.Println(transaction.CheckFunds(payload.UserId))
+	// fmt.Println(transaction.CheckStock(payload.UserId, payload.StockSymbol))
 }
 
 // commit
@@ -199,7 +199,7 @@ func PutBuyHandler(w http.ResponseWriter, r *http.Request) {
 	commitTransact(ctx, 1)
 	io.WriteString(w, "Commit buy!")
 	w.WriteHeader(http.StatusOK)	
-	// fmt.Println(database.CheckFunds(payload.UserId))
+	// fmt.Println(transaction.CheckFunds(payload.UserId))
 }
 
 // cancel
@@ -215,7 +215,7 @@ func DeleteBuyHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, "", logger.CancelBuy)		
 	cancelTransact(ctx,1)
 	io.WriteString(w, "Cancel Buy!")
-	// fmt.Println(database.CheckFunds(payload.UserId))
+	// fmt.Println(transaction.CheckFunds(payload.UserId))
 	w.WriteHeader(http.StatusOK)	
 }
 
@@ -232,8 +232,8 @@ func PostSellHandler(w http.ResponseWriter, r *http.Request) {
 	transact(ctx, 0, money.Money(payload.Amount))
 	io.WriteString(w, "Sell!")
 	w.WriteHeader(http.StatusOK)	
-	// fmt.Println(database.CheckFunds(payload.UserId))
-	// fmt.Println(database.CheckStock(payload.UserId, payload.StockSymbol))
+	// fmt.Println(transaction.CheckFunds(payload.UserId))
+	// fmt.Println(transaction.CheckStock(payload.UserId, payload.StockSymbol))
 }
 
 // commit
@@ -250,7 +250,7 @@ func PutSellHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, "", logger.CommitSell)	
 	commitTransact(ctx, 0)
 	io.WriteString(w, "Commit Sell!")
-	// fmt.Println(database.CheckFunds(payload.UserId))
+	// fmt.Println(transaction.CheckFunds(payload.UserId))
 }
 
 // cancel
@@ -267,7 +267,7 @@ func DeleteSellHandler(w http.ResponseWriter, r *http.Request) {
 	cancelTransact(ctx,0)
 	io.WriteString(w, "Cancel Sell!")
 	w.WriteHeader(http.StatusOK)
-	// fmt.Println(database.CheckFunds(payload.UserId))
+	// fmt.Println(transaction.CheckFunds(payload.UserId))
 }
 
 //SetBuyAmount

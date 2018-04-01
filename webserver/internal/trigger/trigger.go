@@ -2,15 +2,15 @@ package trigger
 
 import (
   "sync"
-  "webserver/internal/database"
+  "webserver/internal/transaction"
   "webserver/internal/money"
   "webserver/internal/context"
 )
 
 type trigger struct {
-  deposit database.Holding
+  deposit        transaction.Holding
   executionPrice money.Money
-  amount money.Money
+  amount         money.Money
 }
 
 var triggerMutex sync.Mutex
@@ -63,7 +63,7 @@ func SetBuyAmount(ctx *context.Context, amount money.Money) error {
     return err
   }
 
-  deposit, err := database.HoldMoney(ctx, amount)
+  deposit, err := transaction.HoldMoney(ctx, amount)
   if err != nil {
     return err
   }
@@ -99,7 +99,7 @@ func CancelSetBuy(ctx *context.Context) error {
     return err
   }
 
-  database.Return(ctx, t.deposit)
+  transaction.Return(ctx, t.deposit)
   delete(userMap, ctx.StockSymbol)
 
   return nil
@@ -131,7 +131,7 @@ func SetSellTrigger(ctx *context.Context, executionPrice money.Money) error {
   }
 
   requiredStocks := int(userMap[ctx.StockSymbol].amount) / int(executionPrice)
-  deposit, err := database.HoldStocks(ctx, requiredStocks)
+  deposit, err := transaction.HoldStocks(ctx, requiredStocks)
   if err != nil {
     return err
   }
@@ -151,7 +151,7 @@ func CancelSetSell(ctx *context.Context) error {
     return err
   }
 
-  database.Return(ctx, t.deposit)
+  transaction.Return(ctx, t.deposit)
   delete(userMap, ctx.StockSymbol)
 
   return nil
@@ -161,10 +161,10 @@ func executeBuyTrigger(ctx *context.Context, t *trigger, quotePrice money.Money)
   numStocks := int(t.amount) / int(quotePrice)
   refundAmt := money.Money(int(t.amount) - (numStocks * int(quotePrice)))
 
-  reverseMoneyHold := database.MoneyHolding{UserId: ctx.UserId, Amount: refundAmt}
-  reverseStockHold := database.StockHolding{UserId: ctx.UserId, StockSymbol: ctx.StockSymbol, Amount: numStocks}
+  reverseMoneyHold := transaction.MoneyHolding{UserId: ctx.UserId, Amount: refundAmt}
+  reverseStockHold := transaction.StockHolding{UserId: ctx.UserId, StockSymbol: ctx.StockSymbol, Amount: numStocks}
 
-  err := database.Return(ctx, reverseMoneyHold, reverseStockHold)
+  err := transaction.Return(ctx, reverseMoneyHold, reverseStockHold)
   return err
 }
 
@@ -174,10 +174,10 @@ func executeSellTrigger(ctx *context.Context, t *trigger, quotePrice money.Money
   refundStocks := maxStocks - numStocks
   sellMoney := money.Money(numStocks * int(quotePrice))
 
-  reverseMoneyHold := database.MoneyHolding{UserId: ctx.UserId, Amount: sellMoney}
-  reverseStockHold := database.StockHolding{UserId: ctx.UserId, StockSymbol: ctx.StockSymbol, Amount: refundStocks}
+  reverseMoneyHold := transaction.MoneyHolding{UserId: ctx.UserId, Amount: sellMoney}
+  reverseStockHold := transaction.StockHolding{UserId: ctx.UserId, StockSymbol: ctx.StockSymbol, Amount: refundStocks}
 
-  err := database.Return(ctx, reverseMoneyHold, reverseStockHold)
+  err := transaction.Return(ctx, reverseMoneyHold, reverseStockHold)
   return err
 }
 
