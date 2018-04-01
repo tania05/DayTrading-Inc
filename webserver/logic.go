@@ -25,8 +25,6 @@ type QuoteCacheItem struct {
 	Timestamp int64
 }
 
-var buystack map[string][]database.Transaction = make(map[string][]database.Transaction)
-var sellstack map[string][]database.Transaction = make(map[string][]database.Transaction)
 var mutex sync.Mutex
 
 var redisCodec *cache.Codec
@@ -45,6 +43,7 @@ func getClient() *cache.Codec {
 		if pingError != nil {
 			fmt.Println("Failed to contact Redis server")
 			fmt.Println(pingError)
+			panic(pingError)
 			return nil
 		}
 		fmt.Println("Connected to Redis")
@@ -136,61 +135,28 @@ func transact(ctx *context.Context, bs int, amount money.Money) {
 	price := getQuote(ctx)
 	stocknum := int((amount/price))
 	cost := money.Money(stocknum * int(price))
-	
-	mutex.Lock()
-	defer mutex.Unlock()
 
+	fmt.Println("Price ", price, " stocknum ", stocknum, " cost ", cost)
+
+	var tx database.Transaction
 	if bs == 1 {
-		t, err := database.AllocateFunds(ctx, cost, stocknum)
-		// if err != nil {
-		// 	panic(err)
-		// }
-		if err == nil {
-			
-			buystack[ctx.UserId] = append(buystack[ctx.UserId], t)
-			// fmt.Println("buy")
-		}
-		//err := pushPendingBuy(cost, stocknum, stock, user)
+		fmt.Println("Allocating funds")
+		tx, _ = database.AllocateFunds(ctx, cost, stocknum)
 	} else {
-		t, err := database.AllocateStocks(ctx, stocknum, cost)
-		// if err != nil {
-		// 	panic(err)
-		// }
-		if err == nil {
-			sellstack[ctx.UserId] = append(sellstack[ctx.UserId], t)
-			// fmt.Println(sellstack[ctx.UserId])
-			// fmt.Println(t)
-			// fmt.Println("sell")
-		}
+		tx, _ = database.AllocateStocks(ctx, stocknum, cost)
 	}
+
+	go func(ctx *context.Context, id int) {
+		time.Sleep(60 * time.Second)
+		fmt.Println("Checking if transaction ", id, " still exists, if so cancelling")
+		database.CancelByTimeout(ctx, id)
+	}(ctx, tx.Id)
 }
 
 func commitTransact(ctx *context.Context, bs int){
-	//fmt.Println("buy/sell confirm")
-	mutex.Lock()
-	defer mutex.Unlock()
-	if bs == 1 && len(buystack[ctx.UserId]) > 0{
-		database.Commit(ctx, popback(buystack[ctx.UserId]))
-		// fmt.Println("buy confirm")
-	} else if len(sellstack[ctx.UserId]) > 0{
-		database.Commit(ctx, popback(sellstack[ctx.UserId]))
-		// fmt.Println("sell confirm")
-	}
+	database.CommitTransaction(ctx, bs == 1)
 }
 
 func cancelTransact(ctx *context.Context, bs int){
-	mutex.Lock()
-	defer mutex.Unlock()
-	if bs == 1 && len(buystack[ctx.UserId]) > 0 {
-		database.Cancel(ctx, popback(buystack[ctx.UserId]))
-	} else if len(sellstack[ctx.UserId]) > 0{
-		// fmt.Println(sellstack[ctx.UserId])
-		database.Cancel(ctx, popback(sellstack[ctx.UserId]))
-	}
-}
-
-func popback(s []database.Transaction) database.Transaction {
-	x, a := s[len(s)-1], s[:len(s)-1]
-	s = a
-	return x
+	database.CancelTransaction(ctx, bs == 1)
 }

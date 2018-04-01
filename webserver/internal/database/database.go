@@ -22,6 +22,7 @@ type Holding interface {
 }
 
 type Transaction struct {
+	Id         int
 	payable    Holding
 	receivable Holding
 }
@@ -143,7 +144,7 @@ func (hold MoneyHolding) pay(target queryable, ctx *context.Context) error {
 	row := target.QueryRow(`
 		UPDATE users
 			SET money = money - $2
-			WHERE id = $1
+			WHERE Id = $1
 			RETURNING money;
 	`, hold.UserId, int(hold.Amount))
 
@@ -161,9 +162,9 @@ func (hold MoneyHolding) pay(target queryable, ctx *context.Context) error {
 
 func (hold MoneyHolding) receive(target queryable, ctx *context.Context) error {
 	row := target.QueryRow(`
-		INSERT INTO users(id,money)
+		INSERT INTO users(Id,money)
 			VALUES ($1, $2)
-			ON CONFLICT(id) DO UPDATE
+			ON CONFLICT(Id) DO UPDATE
 				SET money = users.money + $2
 			RETURNING money;
 	`, hold.UserId, int(hold.Amount))
@@ -186,14 +187,14 @@ func AddFunds(ctx *context.Context, amount money.Money) error {
 
 //TODO
 func attemptAllocate(ctx *context.Context, trans Transaction) (Transaction, error) {
-
+	fmt.Println("Attempting allocation ", ctx, " trans ", trans)
 	tx, err := getDatabase(ctx.UserId).Begin()
 	if err != nil {
 		return Transaction{}, ctx.MakeError("Failed to initialize transaction context")
 	}
 	defer tx.Rollback()
 
-	err = trans.payable.pay(getDatabase(ctx.UserId), ctx)
+	err = trans.payable.pay(tx, ctx)
 	if err != nil {
 		return Transaction{}, ctx.MakeError(err.Error())
 	}
@@ -227,15 +228,18 @@ func attemptAllocate(ctx *context.Context, trans Transaction) (Transaction, erro
 		panic("Unknown holding type")
 	}
 
-	_, err = getDatabase(ctx.UserId).Exec(`
+	row := tx.QueryRow(`
 		INSERT INTO transactions(user_id, money_amount, stock_sym, stock_amount, is_buy, created_at)
-			VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+			VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP) RETURNING Id
 	`, ctx.UserId, int(moneyHolding.Amount), stockHolding.StockSymbol, stockHolding.Amount, isBuy)
 
+	var txId int
+	err = row.Scan(&txId)
 	if err != nil {
 		return Transaction{}, ctx.MakeError(err.Error())
 	}
 
+	trans.Id = txId
 	tx.Commit()
 
 	return trans, nil
@@ -285,6 +289,104 @@ func HoldMoney(ctx *context.Context, amount money.Money) (Holding, error) {
 	return hold, nil
 }
 
+func CommitTransaction(ctx *context.Context, isBuy bool) error {
+	return commitOrCancelTransaction(ctx, isBuy, true)
+}
+
+func CancelTransaction(ctx *context.Context, isBuy bool) error {
+	return commitOrCancelTransaction(ctx, isBuy, false)
+}
+
+func CancelByTimeout(ctx *context.Context, txId int) error {
+	tx, err := getDatabase(ctx.UserId).Begin()
+	if err != nil {
+		return ctx.MakeError("Failed to initalize transaction")
+	}
+	defer tx.Rollback()
+
+	row := tx.QueryRow(`
+		DELETE FROM transactions
+		  WHERE transactions.Id = $1
+		RETURNING money_amount, stock_sym, stock_amount, is_buy
+	`, txId)
+
+	var moneyAmount int
+	var stockSym string
+	var stockAmount int
+	var isBuy bool
+	err = row.Scan(&moneyAmount, &stockSym, &stockAmount, &isBuy)
+	if err != nil {
+		return nil // just means this was finshed by normal means
+	}
+
+	moneyHolding := MoneyHolding{UserId:ctx.UserId, Amount:money.Money(moneyAmount)}
+	stockHolding := StockHolding{UserId:ctx.UserId, StockSymbol:stockSym, Amount:stockAmount}
+
+	if !isBuy { //cancelling a sell or commiting a buy
+		err = stockHolding.receive(tx, ctx)
+		if err != nil {
+			return err
+		}
+	} else {
+		err = moneyHolding.receive(tx, ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	tx.Commit()
+	return nil
+
+}
+
+func commitOrCancelTransaction(ctx *context.Context, isBuy bool, isCommit bool) error{
+	tx, err := getDatabase(ctx.UserId).Begin()
+	if err != nil {
+		return ctx.MakeError("Failed to initalize transaction")
+	}
+	defer tx.Rollback()
+
+	row := tx.QueryRow(`
+		WITH subquery AS (
+			SELECT Id AS Id
+			FROM transactions
+			WHERE user_id = $1
+				  AND is_buy = $2
+			ORDER BY created_at DESC
+			LIMIT 1
+		)
+		DELETE FROM transactions
+		  WHERE transactions.Id = (SELECT Id from subquery)
+		RETURNING money_amount, stock_sym, stock_amount
+	`, ctx.UserId, isBuy)
+
+	var moneyAmount int
+	var stockSym string
+	var stockAmount int
+	err = row.Scan(&moneyAmount, &stockSym, &stockAmount)
+	if err != nil {
+		return ctx.MakeError("Failed to find recent transaction for user")
+	}
+
+	moneyHolding := MoneyHolding{UserId:ctx.UserId, Amount:money.Money(moneyAmount)}
+	stockHolding := StockHolding{UserId:ctx.UserId, StockSymbol:stockSym, Amount:stockAmount}
+
+	if isBuy == isCommit { //cancelling a sell or commiting a buy
+		err = stockHolding.receive(tx, ctx)
+		if err != nil {
+			return err
+		}
+	} else {
+		err = moneyHolding.receive(tx, ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	tx.Commit()
+	return nil
+}
+
 //TODO return and execute should be atomic
 func Return(ctx *context.Context, holds ... Holding) error {
 
@@ -306,10 +408,3 @@ func Return(ctx *context.Context, holds ... Holding) error {
 	return nil
 }
 
-func Commit(ctx *context.Context, trans Transaction) error {
-	return trans.receivable.receive(getDatabase(ctx.UserId), ctx)
-}
-
-func Cancel(ctx *context.Context, trans Transaction) error {
-	return trans.payable.receive(getDatabase(ctx.UserId), ctx)
-}
