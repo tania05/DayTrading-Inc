@@ -285,7 +285,15 @@ func HoldMoney(ctx *context.Context, amount money.Money) (Holding, error) {
 	return hold, nil
 }
 
-func CommitTransaction(ctx *context.Context, isBuy bool) error{
+func CommitTransaction(ctx *context.Context, isBuy bool) error {
+	return commitOrCancelTransaction(ctx, isBuy, true)
+}
+
+func CancelTransaction(ctx *context.Context, isBuy bool) error {
+	return commitOrCancelTransaction(ctx, isBuy, false)
+}
+
+func commitOrCancelTransaction(ctx *context.Context, isBuy bool, isCommit bool) error{
 	tx, err := getDatabase(ctx.UserId).Begin()
 	if err != nil {
 		return ctx.MakeError("Failed to initalize transaction")
@@ -317,7 +325,7 @@ func CommitTransaction(ctx *context.Context, isBuy bool) error{
 	moneyHolding := MoneyHolding{UserId:ctx.UserId, Amount:money.Money(moneyAmount)}
 	stockHolding := StockHolding{UserId:ctx.UserId, StockSymbol:stockSym, Amount:stockAmount}
 
-	if isBuy {
+	if isBuy == isCommit { //cancelling a sell or commiting a buy
 		err = moneyHolding.pay(tx, ctx)
 		if err != nil {
 			return err

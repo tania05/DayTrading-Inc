@@ -1,4 +1,4 @@
-FROM golang:latest
+FROM golang:1.9
 
 ARG buildpath
 ENV GOPATH=$GOPATH:/app
@@ -17,8 +17,8 @@ ADD . /app/src
 RUN cd /app/src/$buildpath && go build && go install
 
 
-FROM alpine:3.7
-COPY --from=0 /go/bin/$buildpath /app/$buildpath
+FROM ubuntu:16.04
+COPY --from=0 /app/bin/$buildpath /app/bin/$buildpath
 # Yes, this is in the root directory
 ADD config.toml config.toml
 
