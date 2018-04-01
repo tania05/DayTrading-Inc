@@ -4,6 +4,7 @@ import (
   "webserver/internal/money"
   "webserver/internal/logger"
   "time"
+  "fmt"
 )
 
 type Context struct {
@@ -39,6 +40,7 @@ func (context Context) MakeError(message string) logger.ErrorEventLog {
     Funds: context.Funds,
   }
   logger.Log(err)
+  fmt.Printf("%s\n", err)
   return err
 }
 

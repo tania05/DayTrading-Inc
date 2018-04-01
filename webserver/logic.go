@@ -43,6 +43,7 @@ func getClient() *cache.Codec {
 		if pingError != nil {
 			fmt.Println("Failed to contact Redis server")
 			fmt.Println(pingError)
+			panic(pingError)
 			return nil
 		}
 		fmt.Println("Connected to Redis")
@@ -134,15 +135,22 @@ func transact(ctx *context.Context, bs int, amount money.Money) {
 	price := getQuote(ctx)
 	stocknum := int((amount/price))
 	cost := money.Money(stocknum * int(price))
-	
-	mutex.Lock()
-	defer mutex.Unlock()
 
+	fmt.Println("Price ", price, " stocknum ", stocknum, " cost ", cost)
+
+	var tx database.Transaction
 	if bs == 1 {
-		database.AllocateFunds(ctx, cost, stocknum)
+		fmt.Println("Allocating funds")
+		tx, _ = database.AllocateFunds(ctx, cost, stocknum)
 	} else {
-		database.AllocateStocks(ctx, stocknum, cost)
+		tx, _ = database.AllocateStocks(ctx, stocknum, cost)
 	}
+
+	go func(ctx *context.Context, id int) {
+		time.Sleep(60 * time.Second)
+		fmt.Println("Checking if transaction ", id, " still exists, if so cancelling")
+		database.CancelByTimeout(ctx, id)
+	}(ctx, tx.Id)
 }
 
 func commitTransact(ctx *context.Context, bs int){
@@ -151,10 +159,4 @@ func commitTransact(ctx *context.Context, bs int){
 
 func cancelTransact(ctx *context.Context, bs int){
 	database.CancelTransaction(ctx, bs == 1)
-}
-
-func popback(s []database.Transaction) database.Transaction {
-	x, a := s[len(s)-1], s[:len(s)-1]
-	s = a
-	return x
 }
