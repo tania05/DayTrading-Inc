@@ -3,7 +3,7 @@ package logger
 import (
 	"encoding/xml"
 	"os"
-	"webserver/internal/money"
+	"common/money"
 )
 
 type CommandType string

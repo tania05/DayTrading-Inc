@@ -1,7 +1,7 @@
 package context
 
 import (
-  "webserver/internal/money"
+  "common/money"
   "webserver/internal/logger"
   "time"
   "fmt"

@@ -1,7 +1,7 @@
 package transaction
 
 import (
-	"webserver/internal/money"
+	"common/money"
 	"webserver/internal/logger"
 	"webserver/internal/context"
 	_ "github.com/lib/pq"

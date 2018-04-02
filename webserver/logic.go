@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 	"webserver/internal/transaction"
-	"webserver/internal/money"
+	"common/money"
 	"webserver/internal/logger"
 	"webserver/internal/context"
   "webserver/internal/trigger"

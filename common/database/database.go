@@ -8,7 +8,7 @@ import (
 	"time"
 	"os"
 	"strconv"
-	"hash/fnv"
+	"common/hashing"
 )
 
 
@@ -60,19 +60,10 @@ func waitForConnection() {
 }
 
 func GetDatabase(userId string) *sql.DB {
-	digest := fnv.New32a()
-	digest.Write([]byte(userId))
-
-	hash := digest.Sum32()
-	hashInt := int(hash)
-	if hashInt < 0 {
-		hashInt = hashInt * -1
-	}
-	index := hashInt % len(databases)
+	index := hashing.ModuloHash(userId, len(databases))
 	fmt.Printf("User has hased to database %d\n", index)
 	return databases[index]
 }
-
 func init() {
 	waitForConnection()
 }

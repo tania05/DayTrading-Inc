@@ -11,6 +11,7 @@ RUN go get github.com/go-redis/redis
 RUN go get github.com/go-redis/cache
 RUN go get github.com/vmihailenco/msgpack
 RUN go get github.com/lib/pq
+RUN go get github.com/valyala/gorpc
 
 ADD . /app/src
 

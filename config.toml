@@ -21,3 +21,7 @@ SSLMode = "disable"
 [LoadBalancer]
 Domain = "loadbalancer"
 port = 5555
+
+[Trigger]
+Domain = "trigger"
+port = 12345

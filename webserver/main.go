@@ -6,8 +6,7 @@ import (
   "encoding/json"
   "github.com/gorilla/mux"
   "log"
-  "webserver/internal/money"
-  "webserver/internal/trigger"
+  "common/money"
   "webserver/internal/logger"
   "webserver/internal/context"
   "io/ioutil"
@@ -17,6 +16,7 @@ import (
 	"strings"
 	"bytes"
 	"net"
+	"trigger"
 )
 
 

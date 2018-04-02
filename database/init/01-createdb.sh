@@ -25,17 +25,10 @@ EOSQL
             UNIQUE(user_id, stock_sym)
         );
 
-        CREATE TABLE holdings (
-            id INTEGER PRIMARY KEY,
-            user_id VARCHAR(64) REFERENCES users(id),
-            amount INTEGER,
-            stock_sym VARCHAR(64)
-        );
-
         CREATE TABLE triggers (
-            deposit_id INTEGER REFERENCES holdings(id),
             execution_price INTEGER CHECK (execution_price >= 0),
             amount INTEGER CHECK (amount >= 0),
+            stock_sym VARCHAR(3) NOT NULL,
             is_buy BOOLEAN
         );
 
