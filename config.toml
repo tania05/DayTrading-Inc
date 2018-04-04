@@ -1,6 +1,6 @@
 [QuoteServer]
 Domain = "quoteserver"
-Port = 8080
+Port = 4441
 
 [WebServer]
 Domain = "webserver"

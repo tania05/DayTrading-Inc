@@ -14,7 +14,7 @@ services:
       dockerfile: go-build/Dockerfile
       context: .
     extra_hosts:
-      - "quoteserver:134.87.135.146"
+      - "quoteserver:192.168.1.135"
     networks:
         - frontend
         - backend
@@ -38,7 +38,7 @@ services:
       dockerfile: go-build/Dockerfile
       context: .
     extra_hosts:
-      - "quoteserver:134.87.135.146"
+      - "quoteserver:192.168.1.135"
     networks:
       - backend
     command: /app/bin/trigger
