@@ -38,6 +38,11 @@ type Configuration struct {
 		Domain string
 		Port int
 	}
+	
+	AuditServer struct {
+		Domain string
+		Port int
+	}
 }
 
 var GlobalConfig Configuration

@@ -1,6 +1,6 @@
 [QuoteServer]
 Domain = "quoteserver"
-Port = 8080
+Port = 4441
 
 [WebServer]
 Domain = "webserver"
@@ -25,3 +25,7 @@ port = 5555
 [Trigger]
 Domain = "trigger"
 port = 12345
+
+[AuditServer]
+Domain = "auditserver"
+port = 9999

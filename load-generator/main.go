@@ -114,7 +114,7 @@ type Command interface {
   request() string
 }
 
-const lburl = "http://localhost:5555"
+const lburl = "http://127.0.0.1:5555"
 const post = "POST"
 const put = "PUT"
 const delete = "DELETE"

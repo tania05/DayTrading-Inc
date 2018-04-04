@@ -2,8 +2,10 @@ package logger
 
 import (
 	"encoding/xml"
-	"os"
 	"common/money"
+	"github.com/valyala/gorpc"
+	"fmt"
+	"common/config"
 )
 
 type CommandType string
@@ -139,28 +141,34 @@ func (v ErrorEventLog) Error() string {
 
 // Global logger worker
 var logChan chan []byte
+var dispatcher *gorpc.Dispatcher
+var auditClient *gorpc.Client
 
 func init() {
-	logChan = make(chan []byte, 32)
-	go func() {
-		f, err := os.OpenFile("log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
-		if err != nil {
-			panic(err)
-		}
-		for {
-			bytes := <-logChan
-			f.Write(bytes)
-			f.Write([]byte("\n"))
-		}
-	}()
-}
 
-func Log(msg XmlLoggable) {
-	bytes, err := msg.asXml()
-	if err != nil { //TODO better error handling
-		panic(err)
+	gorpc.RegisterType(UserCommandLog{})
+	gorpc.RegisterType(QuoteServerLog{})
+	gorpc.RegisterType(AccountTransactionLog{})
+	gorpc.RegisterType(SystemEventLog{})
+	gorpc.RegisterType(ErrorEventLog{})
+	gorpc.RegisterType(DebugEventLog{})
+
+	dispatcher = gorpc.NewDispatcher()
+	dispatcher.AddFunc(FLog, func(v *XmlLoggable) error { return nil })
+
+	auditClient := &gorpc.Client{
+		Addr: fmt.Sprintf("%s:%d",
+			config.GlobalConfig.Trigger.Domain,
+			config.GlobalConfig.Trigger.Port),
 	}
-	logChan <- bytes
+
+	auditClient.Start()
+	}
+
+const FLog = "Log"
+func Log(msg XmlLoggable) {
+	client := dispatcher.NewFuncClient(auditClient)
+	client.Send(FLog, &msg)
 }
 
 

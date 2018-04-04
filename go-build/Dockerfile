@@ -13,14 +13,13 @@ RUN go get github.com/vmihailenco/msgpack
 RUN go get github.com/lib/pq
 RUN go get github.com/valyala/gorpc
 
-# ADD . /app/src
 ADD webserver /app/src/webserver
 ADD trigger /app/src/trigger
 ADD load-balancer /app/src/load-balancer
+ADD auditserver /app/src/auditserver
 ADD common /app/src/common
 
 RUN cd /app/src/$buildpath && go build && go install
-
 
 FROM ubuntu:16.04
 COPY --from=0 /app/bin/$buildpath /app/bin/$buildpath
