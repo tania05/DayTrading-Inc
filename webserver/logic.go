@@ -19,14 +19,16 @@ func addFunds(ctx *context.Context, amount money.Money ) error {
 }
 
 func transact(ctx *context.Context, bs int, amount money.Money) error {
-	price := quote.GetQuote(ctx)
+	price, err := quote.GetQuote(ctx)
+	if err != nil {
+		return err
+	}
 	stocknum := int((amount/price))
 	cost := money.Money(stocknum * int(price))
 
 	fmt.Println("Price ", price, " stocknum ", stocknum, " cost ", cost)
 
 	var tx transaction.Transaction
-	var err error
 	if bs == 1 {
 		fmt.Println("Allocating funds")
 		tx, err = transaction.AllocateFunds(ctx, cost, stocknum)

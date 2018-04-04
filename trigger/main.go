@@ -49,9 +49,10 @@ func executeBuyTrigger(userId string, stockSymbol string, price int, triggerId s
 	}
 
 	results, err = tx.Exec(`
-			UPDATE stocks
-				SET amount = amount + $3
-				WHERE user_id = $1 AND stock_sym = $2
+			INSERT INTO stocks(user_id, stock_sym, amount)
+				VALUES ($1, $2, $3)
+				ON CONFLICT(user_id, stock_sym) DO UPDATE
+					SET amount = stocks.amount + $3
 		`, userId, stockSymbol, stockAmount)
 
 	if err = ensureSingleRowAffected(err, ctx, results); err != nil {
@@ -64,6 +65,7 @@ func executeBuyTrigger(userId string, stockSymbol string, price int, triggerId s
 	`, triggerId)
 
 	if err = ensureSingleRowAffected(err, ctx, results); err != nil {
+		delete(buyTriggers, triggerId)
 		return
 	}
 
@@ -101,9 +103,10 @@ func executeSellTrigger(userId string, stockSymbol string, price int, triggerId 
 	if soldStockAmount != reservedStockAmount {
 		refundStockAmount := reservedStockAmount - soldStockAmount
 		results, err = tx.Exec(`
-				UPDATE stocks
-					SET amount = amount + $3
-					WHERE user_id = $1 AND stock_sym = $2
+			INSERT INTO stocks(user_id, stock_sym, amount)
+				VALUES ($1, $2, $3)
+				ON CONFLICT(user_id, stock_sym) DO UPDATE
+					SET amount = stocks.amount + $3
 			`, userId, stockSymbol, refundStockAmount)
 
 		if err = ensureSingleRowAffected(err, ctx, results); err != nil {
@@ -117,6 +120,7 @@ func executeSellTrigger(userId string, stockSymbol string, price int, triggerId 
 	`, triggerId)
 
 	if err = ensureSingleRowAffected(err, ctx, results); err != nil {
+		delete(sellTriggers, triggerId)
 		return
 	}
 
@@ -145,28 +149,63 @@ func ensureSingleRowAffected(err error, ctx *context.Context, results sql.Result
 func triggerLoop() {
 	lastStart := time.Now()
 	for {
-		time.Sleep(time.Now().Sub(lastStart.Add(time.Second * 60)))
+		tts := lastStart.Add(60 * time.Second).Sub(time.Now())
+		if tts < 0 {
+			tts = 2000
+		}
+		time.Sleep(tts)
 		lastStart = time.Now()
+		fmt.Println("Beginning trigger execution check")
+
+		wait := make(chan int)
+		quoteWait := make(chan int, 6)
+		quoteWait <- 1
+		quoteWait <- 1
+		quoteWait <- 1
+		quoteWait <- 1
+		total := 0
 
 		mutex.Lock()
-		defer mutex.Unlock()
 		for k, v := range buyTriggers {
-			stockSym := strings.Trim(k[:3], "!")
-			userId := strings.Trim(k[3:67], "!")
-			ctx := context.MakeSilentContext(v.transactionNum, userId, stockSym, logger.SetBuyTrigger)
-			price := int(quote.GetQuote(ctx))
-			if price <= v.executionPrice {
-				go executeBuyTrigger(userId, stockSym, price, k, v, ctx)
-			}
+			go func(k string, v *trigger) {
+				stockSym := strings.Trim(k[:3], "!")
+				userId := strings.Trim(k[3:67], "!")
+				ctx := context.MakeSilentContext(v.transactionNum, userId, stockSym, logger.SetBuyTrigger)
+				<-quoteWait
+				price, err := quote.GetQuote(ctx)
+				quoteWait <- 1
+				if err != nil {
+					return
+				}
+				if int(price) <= v.executionPrice {
+					executeBuyTrigger(userId, stockSym, int(price), k, v, ctx)
+				}
+				wait <- 1
+			}(k, v)
+			total += 1
 		}
 		for k, v := range sellTriggers {
-			stockSym := strings.Trim(k[:3], "!")
-			userId := strings.Trim(k[3:67], "!")
-			ctx := context.MakeSilentContext(v.transactionNum, userId, stockSym, logger.SetBuyTrigger)
-			price := int(quote.GetQuote(ctx))
-			if price >= v.executionPrice {
-				go executeSellTrigger(userId, stockSym, price, k, v, ctx)
-			}
+			go func(k string, v *trigger) {
+				stockSym := strings.Trim(k[:3], "!")
+				userId := strings.Trim(k[3:67], "!")
+				ctx := context.MakeSilentContext(v.transactionNum, userId, stockSym, logger.SetSellTrigger)
+				<-quoteWait
+				price, err := quote.GetQuote(ctx)
+				quoteWait <- 1
+				if err != nil {
+					return
+				}
+				if int(price) >= v.executionPrice {
+					executeSellTrigger(userId, stockSym, int(price), k, v, ctx)
+				}
+				wait <- 1
+			}(k, v)
+			total += 1
+		}
+		mutex.Unlock()
+
+		for i := 0; i < total; i++ {
+			<-wait
 		}
 	}
 }
@@ -251,6 +290,7 @@ func setAmount(userId string, stockSymbol string, isBuy bool, amount int) error 
 }
 
 func setTrigger(userId string, stockSymbol string, isBuy bool, executionPrice int, transactionNum int64) error {
+	fmt.Println("Setting trigger")
 	db := database.GetDatabase(userId)
 	tx, err := db.Begin()
 	if err != nil {
@@ -259,6 +299,7 @@ func setTrigger(userId string, stockSymbol string, isBuy bool, executionPrice in
 	defer tx.Rollback()
 
 	triggerId := getTriggerId(userId, stockSymbol, isBuy)
+	fmt.Printf("trigger id %s\n", triggerId)
 
 	row := tx.QueryRow(`
 		UPDATE triggers
@@ -284,6 +325,10 @@ func setTrigger(userId string, stockSymbol string, isBuy bool, executionPrice in
 		}
 	} else {
 		stockAmount := int(amount/executionPrice)
+
+		if stockAmount <= 0 {
+			return fmt.Errorf("can not set trigger for 0 stocks\n")
+		}
 
 		_, err = tx.Exec(`
 			UPDATE stocks
@@ -315,17 +360,25 @@ func setTrigger(userId string, stockSymbol string, isBuy bool, executionPrice in
 
 func cancelSet(userId string, stockSymbol string, isBuy bool) error {
 	db := database.GetDatabase(userId)
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
 	triggerId := getTriggerId(userId, stockSymbol, isBuy)
 
+	var t *trigger
 	mutex.Lock()
 	if isBuy {
 		if buyTriggers[triggerId] == nil { return fmt.Errorf("No trigger for userid/stocksymbol combination exists\n")}
+		t = buyTriggers[triggerId]
 	} else {
 		if sellTriggers[triggerId] == nil { return fmt.Errorf("No trigger for userid/stocksymbol combination exists\n")}
+		t = sellTriggers[triggerId]
 	}
 	mutex.Unlock()
 
-	_, err := db.Exec(`
+	results, err := tx.Exec(`
 		DELETE FROM triggers
 			WHERE id = $1
 	`, triggerId)
@@ -333,6 +386,47 @@ func cancelSet(userId string, stockSymbol string, isBuy bool) error {
 	if err != nil {
 		return err
 	}
+	rowsAffected, err := results.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected != 1 {
+		return fmt.Errorf("Unexpected number of rows affected during trigger deletion")
+	}
+
+	if isBuy {
+		results, err = tx.Exec(`
+			UPDATE users
+				SET money = money + $2
+				WHERE id = $1
+		`, userId, t.amount)
+	} else {
+		results, err = tx.Exec(`
+			UPDATE stocks
+			SET amount = amount + $3
+			WHERE user_id = $1 AND stock_sym = $2
+		`, userId, stockSymbol, int(t.amount / t.executionPrice))
+
+	}
+	rowsAffected, err = results.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected != 1 {
+		return fmt.Errorf("Unexpected number of rows affected during trigger refund")
+	}
+
+	tx.Commit()
+	mutex.Lock()
+	defer mutex.Unlock()
+	if isBuy {
+		delete(buyTriggers, triggerId)
+	} else {
+		delete(sellTriggers, triggerId)
+	}
+
 
 	return nil
 }

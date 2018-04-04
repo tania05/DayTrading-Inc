@@ -53,7 +53,7 @@ func getClient() *cache.Codec {
 	return redisCodec
 }
 
-func GetQuote(ctx *context.Context) money.Money {
+func GetQuote(ctx *context.Context) (money.Money, error) {
 	codec := getClient()
 
 	var cacheVal QuoteCacheItem
@@ -62,7 +62,7 @@ func GetQuote(ctx *context.Context) money.Money {
 			// todo we already have this value stored, systemeventlog or something
 			fmt.Println("Got price from cache")
 			fmt.Println(cacheVal)
-			return cacheVal.Price
+			return cacheVal.Price, nil
 		}
 	}
 
@@ -70,12 +70,13 @@ func GetQuote(ctx *context.Context) money.Money {
 
 	fmt.Println("Contacting " + addr)
 	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		fmt.Println("Quote server connection error ", err)
+		return 0, err
+	}
 
 	defer conn.Close()
 
-	if err != nil {
-		panic(err)
-	}
 
 	conn.Write([]byte(ctx.StockSymbol + "," + ctx.UserId))
 	conn.Write([]byte("\n"))
@@ -115,5 +116,5 @@ func GetQuote(ctx *context.Context) money.Money {
 		fmt.Println(err)
 	}
 
-	return money.Money(val)
+	return money.Money(val), nil
 }
