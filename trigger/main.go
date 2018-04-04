@@ -151,8 +151,8 @@ func triggerLoop() {
 		mutex.Lock()
 		defer mutex.Unlock()
 		for k, v := range buyTriggers {
-			stockSym := strings.Trim(k[:3], "\x00")
-			userId := strings.Trim(k[3:67], "\x00")
+			stockSym := strings.Trim(k[:3], "!")
+			userId := strings.Trim(k[3:67], "!")
 			ctx := context.MakeSilentContext(v.transactionNum, userId, stockSym, logger.SetBuyTrigger)
 			price := int(quote.GetQuote(ctx))
 			if price <= v.executionPrice {
@@ -160,8 +160,8 @@ func triggerLoop() {
 			}
 		}
 		for k, v := range sellTriggers {
-			stockSym := strings.Trim(k[:3], "\x00")
-			userId := strings.Trim(k[3:67], "\x00")
+			stockSym := strings.Trim(k[:3], "!")
+			userId := strings.Trim(k[3:67], "!")
 			ctx := context.MakeSilentContext(v.transactionNum, userId, stockSym, logger.SetBuyTrigger)
 			price := int(quote.GetQuote(ctx))
 			if price >= v.executionPrice {
@@ -206,11 +206,11 @@ func padRight(str, pad string, length int) string {
 }
 
 func padStock(stock string) string {
-	return padRight(stock, "\x00", 3)
+	return padRight(stock, "!", 3)
 }
 
 func padUserId(userId string) string {
-	return padRight(userId, "\x00", 64)
+	return padRight(userId, "!", 64)
 }
 
 func getTriggerId(userId string, stockSym string, buySell bool) string {
@@ -227,14 +227,25 @@ func setAmount(userId string, stockSymbol string, isBuy bool, amount int) error 
 	db := database.GetDatabase(userId)
 	triggerid := getTriggerId(userId, stockSymbol, isBuy)
 
-	_, err := db.Exec(`
+	results, err := db.Exec(`
 		INSERT INTO triggers(id, amount, is_buy)
 			VALUES ($1, $2, $3)
 	`, triggerid, amount, isBuy)
 
 	if err != nil {
-		return err //TODO logger
+		fmt.Printf("setAmount err: %s\n", err)
+		return err
 	}
+
+	rowsAffected, err := results.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected != 1 {
+		fmt.Printf("rowsaffected %d: \n", rowsAffected)
+	}
+
 
 	return nil
 }
