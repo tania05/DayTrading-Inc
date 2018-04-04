@@ -1,0 +1,89 @@
+version: '3'
+
+services:
+  webserver:
+    image: 127.0.0.1:5000/webserver
+    depends_on:
+      - redis
+      - database0
+      - database1
+      - database2
+    build:
+      args:
+        - buildpath=webserver
+      dockerfile: go-build/Dockerfile
+      context: .
+    extra_hosts:
+      - "quoteserver:192.168.1.135"
+    networks:
+        - frontend
+        - backend
+    command: /app/bin/webserver
+    ports:
+     - "8000:8080"
+    environment:
+      - "DATABASE_COUNT=3"
+      - "TRIGGER_COUNT=1"
+
+  trigger0: &trigger
+    image: 127.0.0.1:5000/trigger
+    depends_on:
+      - redis
+      - database0
+      - database1
+      - database2
+    build:
+      args:
+        - buildpath=trigger
+      dockerfile: go-build/Dockerfile
+      context: .
+    extra_hosts:
+      - "quoteserver:192.168.1.135"
+    networks:
+      - backend
+    command: /app/bin/trigger
+    environment:
+      - "DATABASE_COUNT=3"
+    ports: []
+
+  redis:
+    image: redis:4.0.8-alpine
+    ports:
+     - "6379:6379"
+    networks:
+      - backend
+     
+  database0: &database
+    image: 127.0.0.1:5000/database
+    ports:
+     - "5432:5432"
+    environment:
+      restart: always
+    networks:
+        - backend
+    build:
+      context: database
+      dockerfile: Dockerfile
+
+  database1:
+    <<: *database
+  database2:
+    <<: *database
+
+  loadbalancer:
+    image: 127.0.0.1:5000/loadbalancer
+    build:
+      args:
+        - buildpath=load-balancer
+      dockerfile: go/Dockerfile
+      context: .
+    networks:
+        - frontend
+    command: /app/bin/load-balancer
+    ports:
+      - 5555:5555
+
+networks:
+    frontend:
+    backend:
+        internal: true
