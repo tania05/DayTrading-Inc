@@ -108,30 +108,40 @@ type DebugEventLog struct {
 }
 
 type XmlLoggable interface {
-	asXml() ([]byte, error)
+	AsXml() ([]byte, error)
 }
 
-func (v UserCommandLog) asXml() ([]byte, error) {
+const (
+	FUserCommandLog = "UserCommandLog"
+	FQuoteServerLog = "QuoteServerLog"
+	FAccountTransactionLog = "AccountTransactionLog"
+	FSystemEventLog = "SystemEventLog"
+	FErrorEventLog = "ErrorEventLog"
+	FDebugEventLog = "DebugEventLog"
+)
+
+
+func (v UserCommandLog) AsXml() ([]byte, error) {
 	return xml.Marshal(v)
 }
-func (v QuoteServerLog) asXml() ([]byte, error) {
+func (v QuoteServerLog) AsXml() ([]byte, error) {
 	return xml.Marshal(v)
 }
-func (v AccountTransactionLog) asXml() ([]byte, error) {
+func (v AccountTransactionLog) AsXml() ([]byte, error) {
 	return xml.Marshal(v)
 }
-func (v SystemEventLog) asXml() ([]byte, error) {
+func (v SystemEventLog) AsXml() ([]byte, error) {
 	return xml.Marshal(v)
 }
-func (v ErrorEventLog) asXml() ([]byte, error) {
+func (v ErrorEventLog) AsXml() ([]byte, error) {
 	return xml.Marshal(v)
 }
-func (v DebugEventLog) asXml() ([]byte, error) {
+func (v DebugEventLog) AsXml() ([]byte, error) {
   return xml.Marshal(v)
 }
 
 func (v ErrorEventLog) Error() string {
-  bytes, internalErr := v.asXml()
+  bytes, internalErr := v.AsXml()
   if internalErr != nil {
     return "Error creating error message"
   }
@@ -146,29 +156,52 @@ var auditClient *gorpc.Client
 
 func init() {
 
-	gorpc.RegisterType(UserCommandLog{})
-	gorpc.RegisterType(QuoteServerLog{})
-	gorpc.RegisterType(AccountTransactionLog{})
-	gorpc.RegisterType(SystemEventLog{})
-	gorpc.RegisterType(ErrorEventLog{})
-	gorpc.RegisterType(DebugEventLog{})
+	gorpc.RegisterType(&UserCommandLog{})
+	gorpc.RegisterType(&QuoteServerLog{})
+	gorpc.RegisterType(&AccountTransactionLog{})
+	gorpc.RegisterType(&SystemEventLog{})
+	gorpc.RegisterType(&ErrorEventLog{})
+	gorpc.RegisterType(&DebugEventLog{})
 
 	dispatcher = gorpc.NewDispatcher()
-	dispatcher.AddFunc(FLog, func(v *XmlLoggable) error { return nil })
+	dispatcher.AddFunc(FUserCommandLog, func(v *UserCommandLog) error { return nil })
+	dispatcher.AddFunc(FQuoteServerLog, func(v *QuoteServerLog) error { return nil })
+	dispatcher.AddFunc(FAccountTransactionLog, func(v *AccountTransactionLog) error { return nil })
+	dispatcher.AddFunc(FSystemEventLog , func(v *SystemEventLog) error { return nil })
+	dispatcher.AddFunc(FErrorEventLog, func(v *ErrorEventLog) error { return nil })
+	dispatcher.AddFunc(FDebugEventLog, func(v *DebugEventLog) error { return nil })
 
-	auditClient := &gorpc.Client{
+	auditClient = &gorpc.Client{
 		Addr: fmt.Sprintf("%s:%d",
-			config.GlobalConfig.Trigger.Domain,
-			config.GlobalConfig.Trigger.Port),
+			config.GlobalConfig.AuditServer.Domain,
+			config.GlobalConfig.AuditServer.Port),
 	}
 
+	fmt.Println("Connecting to audit server")
 	auditClient.Start()
-	}
+}
 
-const FLog = "Log"
 func Log(msg XmlLoggable) {
 	client := dispatcher.NewFuncClient(auditClient)
-	client.Send(FLog, &msg)
+	var err error
+	switch v := msg.(type) {
+	case UserCommandLog:
+		_, err = client.Call(FUserCommandLog, v)
+	case QuoteServerLog:
+		_, err = client.Call(FQuoteServerLog, v)
+	case AccountTransactionLog:
+		_, err = client.Call(FAccountTransactionLog, v)
+	case SystemEventLog:
+		_, err = client.Call(FSystemEventLog, v)
+	case ErrorEventLog:
+		_, err = client.Call(FErrorEventLog, v)
+	case DebugEventLog:
+		_, err = client.Call(FDebugEventLog, v)
+	}
+
+	if err != nil {
+		fmt.Println("Err logging, ", err)
+	}
 }
 
 
