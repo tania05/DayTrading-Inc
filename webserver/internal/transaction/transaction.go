@@ -2,8 +2,8 @@ package transaction
 
 import (
 	"common/money"
-	"webserver/internal/logger"
-	"webserver/internal/context"
+	"common/logger"
+	"common/context"
 	_ "github.com/lib/pq"
 	"fmt"
 	"common/database"

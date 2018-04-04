@@ -14,7 +14,7 @@ services:
       dockerfile: go-build/Dockerfile
       context: .
     extra_hosts:
-      - "quoteserver:192.168.1.148"
+      - "quoteserver:134.87.135.146"
     networks:
         - frontend
         - backend
@@ -23,6 +23,28 @@ services:
      - "8000:8080"
     environment:
       - "DATABASE_COUNT=3"
+      - "TRIGGER_COUNT=1"
+
+  trigger0: &trigger
+    image: 127.0.0.1:5000/trigger
+    depends_on:
+      - redis
+      - database0
+      - database1
+      - database2
+    build:
+      args:
+        - buildpath=trigger
+      dockerfile: go-build/Dockerfile
+      context: .
+    extra_hosts:
+      - "quoteserver:134.87.135.146"
+    networks:
+      - backend
+    command: /app/bin/trigger
+    environment:
+      - "DATABASE_COUNT=3"
+    ports: []
 
   redis:
     image: redis:4.0.8-alpine

@@ -16,13 +16,12 @@ type SetBuyTriggerCommand struct {
 	ExecutionPrice int
 }
 
-const FSetSellAmountCommand = "SetBuyAmountCommand"
+const FSetSellAmountCommand = "SetSellAmountCommand"
 type SetSellAmountCommand struct {
 	TransactionNum int64
 	UserId string
 	StockSymbol string
 	Amount int
-
 }
 
 const FSetSellTriggerCommand = "SetSellTriggerCommand"

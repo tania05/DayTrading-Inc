@@ -33,6 +33,11 @@ type Configuration struct {
 		Domain string
 		Port int
 	}
+
+	Trigger struct {
+		Domain string
+		Port int
+	}
 }
 
 var GlobalConfig Configuration

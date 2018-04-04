@@ -2,7 +2,7 @@ package context
 
 import (
   "common/money"
-  "webserver/internal/logger"
+  "common/logger"
   "time"
   "fmt"
 )
@@ -15,6 +15,10 @@ type Context struct {
   StockSymbol    string
 }
 
+func MakeSilentContext(transactionNum int64, userId string, stockSymbol string, command logger.CommandType) *Context {
+  ctx := Context{TransactionNum: transactionNum, UserId: userId, StockSymbol: stockSymbol, Command: command}
+  return &ctx
+}
 func MakeContext(transactionNum int64, userId string, stockSymbol string, command logger.CommandType) *Context {
   ctx := Context{TransactionNum: transactionNum, UserId: userId, StockSymbol: stockSymbol, Command: command}
   logger.Log(logger.UserCommandLog {

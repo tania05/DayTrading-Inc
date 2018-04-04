@@ -7,8 +7,8 @@ import (
   "github.com/gorilla/mux"
   "log"
   "common/money"
-  "webserver/internal/logger"
-  "webserver/internal/context"
+  "common/logger"
+  "common/context"
   "io/ioutil"
 	"common/config"
 	"strconv"
@@ -16,7 +16,11 @@ import (
 	"strings"
 	"bytes"
 	"net"
-	"trigger"
+	"github.com/valyala/gorpc"
+	"os"
+	"common/quote"
+	"common/rpc/triggerstructs"
+	"common/hashing"
 )
 
 
@@ -127,6 +131,49 @@ type DisplaySummary struct {
   UserId string
 }
 
+var triggerServers []*gorpc.Client
+var dispatcher *gorpc.Dispatcher
+func setupTriggerRpcs() {
+	triggerCountStr := os.Getenv("TRIGGER_COUNT")
+	triggerCount, err := strconv.Atoi(triggerCountStr)
+	if err != nil {
+		panic(err)
+	}
+
+	gorpc.RegisterType(&logger.ErrorEventLog{})
+	gorpc.RegisterType(&triggerstructs.SetBuyAmountCommand{})
+	gorpc.RegisterType(&triggerstructs.SetBuyTriggerCommand{})
+	gorpc.RegisterType(&triggerstructs.SetSellAmountCommand{})
+	gorpc.RegisterType(&triggerstructs.SetSellTriggerCommand{})
+	gorpc.RegisterType(&triggerstructs.CancelSetBuyCommand{})
+	gorpc.RegisterType(&triggerstructs.CancelSetSellCommand{})
+
+	dispatcher = gorpc.NewDispatcher()
+	dispatcher.AddFunc(triggerstructs.FSetBuyAmountCommand, func(v *triggerstructs.SetBuyAmountCommand) error { return nil })
+	dispatcher.AddFunc(triggerstructs.FSetBuyTriggerCommand, func(v *triggerstructs.SetBuyTriggerCommand) error { return nil })
+	dispatcher.AddFunc(triggerstructs.FSetSellAmountCommand, func(v *triggerstructs.SetSellAmountCommand) error { return nil })
+	dispatcher.AddFunc(triggerstructs.FSetSellTriggerCommand, func(v *triggerstructs.SetSellTriggerCommand) error { return nil })
+	dispatcher.AddFunc(triggerstructs.FCancelSetBuyCommand, func(v *triggerstructs.CancelSetBuyCommand) error { return nil })
+	dispatcher.AddFunc(triggerstructs.FCancelSetSellCommand, func(v *triggerstructs.CancelSetSellCommand) error { return nil })
+
+
+	triggerServers = make([]*gorpc.Client, triggerCount)
+	for i := 0; i < triggerCount; i++ {
+		triggerServers[i] = &gorpc.Client{
+			Addr: fmt.Sprintf("%s%d:%d",
+				config.GlobalConfig.Trigger.Domain, i,
+				config.GlobalConfig.Trigger.Port),
+		}
+
+		triggerServers[i].Start()
+	}
+}
+
+func getTriggerClient(userId string) *gorpc.DispatcherClient {
+	hashVal := hashing.ModuloHash(userId, len(triggerServers))
+	return dispatcher.NewFuncClient(triggerServers[hashVal])
+}
+
 func HelloHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	io.WriteString(w, "Hello World!")
@@ -162,7 +209,7 @@ func GetQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, payload.StockSymbol, logger.Quote)
-	getQuote(ctx)
+	quote.GetQuote(ctx)
 	w.WriteHeader(http.StatusCreated)	
 	io.WriteString(w, "Get Quote!\n")
 	// io.WriteString(w, money)
@@ -280,8 +327,20 @@ func PostBuyTriggerHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	defer r.Body.Close()
-	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, payload.StockSymbol, logger.SetBuyAmount)			
-	trigger.SetBuyAmount(ctx, money.Money(payload.Amount))
+	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, payload.StockSymbol, logger.SetBuyAmount)
+
+	triggerClient := getTriggerClient(ctx.UserId)
+	response, err := triggerClient.Call(triggerstructs.FSetBuyAmountCommand, triggerstructs.SetBuyAmountCommand{
+		TransactionNum: ctx.TransactionNum,
+		UserId: ctx.UserId,
+		StockSymbol: ctx.StockSymbol,
+		Amount: payload.Amount,
+	})
+
+	if err != nil || response != nil{
+		//TODO error handling logic
+	}
+
 	w.WriteHeader(http.StatusOK)
 	io.WriteString(w, "Set Buy Amount!")
 }
@@ -297,9 +356,20 @@ func PutBuyTriggerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, payload.StockSymbol, logger.SetBuyTrigger)			
-	trigger.SetBuyTrigger(ctx, money.Money(payload.Amount))
-	w.WriteHeader(http.StatusOK)	
+	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, payload.StockSymbol, logger.SetBuyAmount)
+
+	triggerClient := getTriggerClient(ctx.UserId)
+	response, err := triggerClient.Call(triggerstructs.FSetBuyTriggerCommand, triggerstructs.SetBuyTriggerCommand{
+		TransactionNum: ctx.TransactionNum,
+		UserId: ctx.UserId,
+		StockSymbol: ctx.StockSymbol,
+		ExecutionPrice: payload.Amount,
+	})
+
+	if err != nil || response != nil{
+		//TODO error handling logic
+	}
+	w.WriteHeader(http.StatusOK)
 	io.WriteString(w, "Set Buy Trigger!")
 }
 
@@ -311,10 +381,19 @@ func DeleteBuyTriggerHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	defer r.Body.Close()
+	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, payload.StockSymbol, logger.SetBuyAmount)
 
-	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, payload.StockSymbol, logger.CancelSetBuy)	
-	trigger.CancelSetBuy(ctx)
-	w.WriteHeader(http.StatusOK)	
+	triggerClient := getTriggerClient(ctx.UserId)
+	response, err := triggerClient.Call(triggerstructs.FCancelSetBuyCommand, triggerstructs.CancelSetBuyCommand{
+		TransactionNum: ctx.TransactionNum,
+		UserId: ctx.UserId,
+		StockSymbol: ctx.StockSymbol,
+	})
+
+	if err != nil || response != nil{
+		//TODO error handling logic
+	}
+	w.WriteHeader(http.StatusOK)
 	io.WriteString(w, "Cancel Buy Trigger!")
 }
 
@@ -329,8 +408,21 @@ func PostSellTriggerHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	defer r.Body.Close()
-	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, payload.StockSymbol, logger.SetSellAmount)		
-	trigger.SetSellAmount(ctx, money.Money(payload.Amount))
+	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, payload.StockSymbol, logger.SetSellAmount)
+
+	triggerClient := getTriggerClient(ctx.UserId)
+	response, err := triggerClient.Call(triggerstructs.FSetSellAmountCommand, triggerstructs.SetSellAmountCommand{
+		TransactionNum: ctx.TransactionNum,
+		UserId: ctx.UserId,
+		StockSymbol: ctx.StockSymbol,
+		Amount: payload.Amount,
+	})
+
+	if err != nil || response != nil{
+		//TODO error handling logic
+	}
+
+	w.WriteHeader(http.StatusOK)
 	io.WriteString(w, "Set sell amount!")
 }
 
@@ -347,8 +439,21 @@ func PutSellTriggerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, payload.StockSymbol, logger.SetSellTrigger)		
-	trigger.SetSellTrigger(ctx, money.Money(payload.Amount))
+	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, payload.StockSymbol, logger.SetSellAmount)
+
+	triggerClient := getTriggerClient(ctx.UserId)
+	response, err := triggerClient.Call(triggerstructs.FSetSellTriggerCommand, triggerstructs.SetSellTriggerCommand{
+		TransactionNum: ctx.TransactionNum,
+		UserId: ctx.UserId,
+		StockSymbol: ctx.StockSymbol,
+		ExecutionPrice: payload.Amount,
+	})
+
+	if err != nil || response != nil{
+		//TODO error handling logic
+	}
+
+	w.WriteHeader(http.StatusOK)
 	io.WriteString(w, "Set Sell Trigger!")
 }
 
@@ -362,8 +467,19 @@ func DeleteSellTriggerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, payload.StockSymbol, logger.CancelSetSell)		
-	trigger.CancelSetSell(ctx)
+	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, payload.StockSymbol, logger.SetBuyAmount)
+
+	triggerClient := getTriggerClient(ctx.UserId)
+	response, err := triggerClient.Call(triggerstructs.FCancelSetSellCommand, triggerstructs.CancelSetSellCommand{
+		TransactionNum: ctx.TransactionNum,
+		UserId: ctx.UserId,
+		StockSymbol: ctx.StockSymbol,
+	})
+
+	if err != nil || response != nil{
+		//TODO error handling logic
+	}
+	w.WriteHeader(http.StatusOK)
 	io.WriteString(w, "Cancel sell trigger!")
 }
 
@@ -443,6 +559,8 @@ func RegisterServer(port int) string{
 }
 
 func main() {
+	setupTriggerRpcs()
+
 	r := mux.NewRouter()
 	r.HandleFunc("/", HelloHandler)
 	r.Path("/users").Methods("POST").HandlerFunc(PostAddHandler);
@@ -468,6 +586,8 @@ func main() {
 
 	port := config.GlobalConfig.WebServer.Port
 	addr := ":" + strconv.Itoa(port)
+
+	fmt.Printf("Listening on %d\n", port)
 	fmt.Println(RegisterServer(port))
 	log.Fatal(http.ListenAndServe(addr, nil))
 }

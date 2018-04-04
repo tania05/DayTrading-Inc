@@ -26,10 +26,11 @@ EOSQL
         );
 
         CREATE TABLE triggers (
+            id VARCHAR(68) PRIMARY KEY,
             execution_price INTEGER CHECK (execution_price >= 0),
             amount INTEGER CHECK (amount >= 0),
-            stock_sym VARCHAR(3) NOT NULL,
-            is_buy BOOLEAN
+            is_buy BOOLEAN,
+            transaction_num INTEGER CHECK (transaction_num >= 0)
         );
 
         CREATE TABLE transactions (
