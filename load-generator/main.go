@@ -128,6 +128,7 @@ var errorCount int
 
 func postRequest(path string, reqType string, payload interface{}) string{
   buff, _ := json.Marshal(payload)
+  fmt.Println(url+path)
   req, _ := http.NewRequest(strings.ToUpper(reqType), url+path, bytes.NewBuffer(buff))
   req.Header.Add("Content-Type","application/json") 
   resp, e := http.DefaultClient.Do(req)
@@ -228,6 +229,7 @@ func (command SetSellTriggerCommand) request() string {
 
 func (command DumplogCommand) request() string {
   // return fmt.Sprintln("DumplogCommand")
+  fmt.Println("Executing Dumplog Command")
   return postRequest("/"+command.UserId+"/dump", post, command)
 }
 

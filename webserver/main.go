@@ -511,7 +511,11 @@ func PostDumpLogHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	defer r.Body.Close()
-
+	var dump logger.DumplogCommand
+	dump.TransactionNum = payload.TransactionNum
+	dump.UserId = payload.UserId
+	dump.FileName = payload.FileName
+	logger.Dumplog(dump)
 	context.MakeContext(payload.TransactionNum, payload.UserId, "", logger.DumpLog)
 }
 
@@ -580,7 +584,7 @@ func main() {
 	r.Path("/triggers/{stockSym}/sell").Methods("PUT").HandlerFunc(PutSellTriggerHandler);
 	r.Path("/triggers/{stockSym}/sell").Methods("DELETE").HandlerFunc(DeleteSellTriggerHandler);
 
-	r.Path("/users/dump").Methods("POST").HandlerFunc(PostDumpLogHandler);
+	r.Path("/{userId}/dump").Methods("POST").HandlerFunc(PostDumpLogHandler);
 	r.Path("/dump").Methods("POST").HandlerFunc(PostAdminDumpLogHandler);
 	r.Path("/users/{userId}/summary").Methods("POST").HandlerFunc(GetDisplaySummaryHandler);
 

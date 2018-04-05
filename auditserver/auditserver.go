@@ -19,6 +19,7 @@ func setupQuoteRpcs() {
 	gorpc.RegisterType(&logger.ErrorEventLog{})
 	gorpc.RegisterType(&logger.DebugEventLog{})
 	gorpc.RegisterType(&logger.DumpAdmin{})
+	gorpc.RegisterType(&logger.DumplogCommand{})
 
 	dispatcher := gorpc.NewDispatcher()
 	dispatcher.AddFunc(logger.FUserCommandLog, func(v *logger.UserCommandLog) error {
@@ -52,6 +53,9 @@ func setupQuoteRpcs() {
 		return AdminDumplog(*v)
 	})
 
+	dispatcher.AddFunc(logger.FDumplog, func(v *logger.DumplogCommand) error {
+		return Dumplog(*v)
+	})
 	s := &gorpc.Server{
 		Addr:    fmt.Sprintf(":%d", config.GlobalConfig.AuditServer.Port),
 		Handler: dispatcher.NewHandlerFunc(),
@@ -95,6 +99,16 @@ func AdminDumplog(dump logger.DumpAdmin) error {
 	cmd := exec.Command("cp", "log", dump.FileName)
 	if err := cmd.Run(); err != nil {
 		fmt.Println("Sorry couldn't make the dump log. Dying.")
+		panic(err)
+	}
+	return nil
+}
+
+func Dumplog(dump logger.DumplogCommand) error {
+	fmt.Println("You have normal dump log")
+	cmd := exec.Command("/bin/sh", "-c", "grep \"<username>"+dump.UserId+"</username>\" log > \"" + dump.FileName + "\"")
+	if err := cmd.Run(); err != nil {
+		fmt.Println("Sorry couldn't make the dump log for the specified user. Dying.")
 		panic(err)
 	}
 	return nil
