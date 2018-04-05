@@ -6,22 +6,19 @@ import (
 	"webserver/internal/transaction"
 	"common/money"
 	"common/context"
-	"sync"
 	"common/quote"
 )
 
-var mutex sync.Mutex
-
-func addFunds(ctx *context.Context, amount money.Money ) error {
+func addFunds(ctx *context.Context, amount money.Money ) (int, error) {
 	//fmt.Println(ctx.UserId)
 	//fmt.Println(ctx.Funds)
 	return transaction.AddFunds(ctx, amount)
 }
 
-func transact(ctx *context.Context, bs int, amount money.Money) error {
+func transact(ctx *context.Context, bs int, amount money.Money) (money.Money, int, error) {
 	price, err := quote.GetQuote(ctx)
 	if err != nil {
-		return err
+		return -1, -1, err
 	}
 	stocknum := int((amount/price))
 	cost := money.Money(stocknum * int(price))
@@ -37,7 +34,7 @@ func transact(ctx *context.Context, bs int, amount money.Money) error {
 	}
 
 	if err != nil {
-		return err
+		return -1, -1, err
 	}
 	go func(ctx *context.Context, id int) {
 		time.Sleep(60 * time.Second)
@@ -45,13 +42,13 @@ func transact(ctx *context.Context, bs int, amount money.Money) error {
 		transaction.CancelByTimeout(ctx, id)
 	}(ctx, tx.Id)
 
-	return nil
+	return cost, stocknum, nil
 }
 
-func commitTransact(ctx *context.Context, bs int){
-	transaction.CommitTransaction(ctx, bs == 1)
+func commitTransact(ctx *context.Context, bs int) error {
+	return transaction.CommitTransaction(ctx, bs == 1)
 }
 
-func cancelTransact(ctx *context.Context, bs int){
-	transaction.CancelTransaction(ctx, bs == 1)
+func cancelTransact(ctx *context.Context, bs int) error {
+	return transaction.CancelTransaction(ctx, bs == 1)
 }

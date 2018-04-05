@@ -141,12 +141,7 @@ func (v DebugEventLog) AsXml() ([]byte, error) {
 }
 
 func (v ErrorEventLog) Error() string {
-  bytes, internalErr := v.AsXml()
-  if internalErr != nil {
-    return "Error creating error message"
-  }
-
-  return string(bytes)
+	return v.ErrorMessage
 }
 
 // Global logger worker

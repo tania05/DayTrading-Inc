@@ -11,7 +11,7 @@ import (
 
 type Holding interface {
 	pay(database.Queryable, *context.Context) error
-	receive(database.Queryable, *context.Context) error
+	receive(database.Queryable, *context.Context) (int, error)
 }
 
 type Transaction struct {
@@ -49,7 +49,7 @@ func (hold StockHolding) pay(target database.Queryable, ctx *context.Context) er
 	return nil
 }
 
-func (hold StockHolding) receive(target database.Queryable, ctx *context.Context) error {
+func (hold StockHolding) receive(target database.Queryable, ctx *context.Context) (int, error) {
 	row := target.QueryRow(`
 		INSERT INTO stocks(user_id, stock_sym, amount)
 			VALUES ($1, $2, $3)
@@ -61,9 +61,9 @@ func (hold StockHolding) receive(target database.Queryable, ctx *context.Context
 	var newAmount int
 	err := row.Scan(&newAmount)
 	if err != nil {
-		return ctx.MakeError(err.Error())
+		return -1, ctx.MakeError(err.Error())
 	}
-	return nil
+	return newAmount, nil
 }
 
 func (hold MoneyHolding) pay(target database.Queryable, ctx *context.Context) error {
@@ -86,7 +86,7 @@ func (hold MoneyHolding) pay(target database.Queryable, ctx *context.Context) er
 
 }
 
-func (hold MoneyHolding) receive(target database.Queryable, ctx *context.Context) error {
+func (hold MoneyHolding) receive(target database.Queryable, ctx *context.Context) (int, error) {
 	row := target.QueryRow(`
 		INSERT INTO users(Id,money)
 			VALUES ($1, $2)
@@ -98,17 +98,16 @@ func (hold MoneyHolding) receive(target database.Queryable, ctx *context.Context
 	var newBalance int
 	err := row.Scan(&newBalance)
 	if err != nil {
-		return ctx.MakeError(err.Error())
+		return -1, ctx.MakeError(err.Error())
 	}
 	ctx.Funds = money.Money(newBalance)
 	ctx.MakeAccountTransactionLog(logger.AddAction)
-	return nil
+	return newBalance, nil
 }
 
-func AddFunds(ctx *context.Context, amount money.Money) error {
+func AddFunds(ctx *context.Context, amount money.Money) (int, error) {
 	receivable := MoneyHolding{UserId: ctx.UserId, Amount: amount}
-	err := receivable.receive(database.GetDatabase(ctx.UserId), ctx)
-	return err
+	return receivable.receive(database.GetDatabase(ctx.UserId), ctx)
 }
 
 //TODO
@@ -193,28 +192,6 @@ func AllocateStocks(ctx *context.Context, stockAmount int, amount money.Money) (
 	return attemptAllocate(ctx, trans)
 }
 
-func HoldStocks(ctx *context.Context, amount int) (Holding, error) {
-	hold := StockHolding{UserId: ctx.UserId, StockSymbol: ctx.StockSymbol, Amount: amount}
-
-	err := hold.pay(database.GetDatabase(ctx.UserId), ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return hold, nil
-}
-
-func HoldMoney(ctx *context.Context, amount money.Money) (Holding, error) {
-	hold := MoneyHolding{UserId: ctx.UserId, Amount: amount}
-
-	err := hold.pay(database.GetDatabase(ctx.UserId), ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return hold, nil
-}
-
 func CommitTransaction(ctx *context.Context, isBuy bool) error {
 	return commitOrCancelTransaction(ctx, isBuy, true)
 }
@@ -249,12 +226,12 @@ func CancelByTimeout(ctx *context.Context, txId int) error {
 	stockHolding := StockHolding{UserId: ctx.UserId, StockSymbol: stockSym, Amount: stockAmount}
 
 	if !isBuy { //cancelling a sell or commiting a buy
-		err = stockHolding.receive(tx, ctx)
+		_, err = stockHolding.receive(tx, ctx)
 		if err != nil {
 			return err
 		}
 	} else {
-		err = moneyHolding.receive(tx, ctx)
+		_, err = moneyHolding.receive(tx, ctx)
 		if err != nil {
 			return err
 		}
@@ -298,12 +275,12 @@ func commitOrCancelTransaction(ctx *context.Context, isBuy bool, isCommit bool) 
 	stockHolding := StockHolding{UserId: ctx.UserId, StockSymbol: stockSym, Amount: stockAmount}
 
 	if isBuy == isCommit { //cancelling a sell or commiting a buy
-		err = stockHolding.receive(tx, ctx)
+		_, err = stockHolding.receive(tx, ctx)
 		if err != nil {
 			return err
 		}
 	} else {
-		err = moneyHolding.receive(tx, ctx)
+		_, err = moneyHolding.receive(tx, ctx)
 		if err != nil {
 			return err
 		}
@@ -311,6 +288,73 @@ func commitOrCancelTransaction(ctx *context.Context, isBuy bool, isCommit bool) 
 
 	tx.Commit()
 	return nil
+}
+
+func Summary(ctx *context.Context, userId string) (string, error) {
+	ret := ""
+	db := database.GetDatabase(userId)
+
+	var amountMoney int
+
+	row := db.QueryRow(`
+		SELECT money
+			FROM users
+			WHERE id = $1
+	`, userId)
+
+	err := row.Scan(&amountMoney)
+	if err != nil {
+		return "", ctx.MakeError(err.Error())
+	}
+
+	ret += fmt.Sprintf("Money: %d\n", amountMoney)
+	ret += fmt.Sprintf("-- Stocks --\n")
+
+	rows, err := db.Query(`
+		SELECT stock_sym, amount
+			FROM stocks
+			WHERE user_id = $1
+	`, userId)
+
+	if err != nil {
+		return "", ctx.MakeError(err.Error())
+	}
+
+	for rows.Next() {
+		var stockSymbol string
+		var amount int
+		err = rows.Scan(&stockSymbol, &amount)
+		if err != nil {
+			return "", ctx.MakeError(err.Error())
+		}
+		ret += fmt.Sprintf("%s %d\n", stockSymbol, amount)
+	}
+
+	rows, err = db.Query(`
+		SELECT stock_sym, is_buy, amount, execution_price
+			FROM triggers
+			WHERE user_id = $1
+	`, userId)
+
+	if err != nil {
+		return "", ctx.MakeError(err.Error())
+	}
+
+	ret += fmt.Sprintf("-- Triggers --\n")
+	for rows.Next() {
+		var stockSymbol string
+		var isBuy bool
+		var amount int
+		var executionPrice int
+
+		err = rows.Scan(&stockSymbol, &isBuy, &amount, &executionPrice)
+		if err != nil {
+			return "", ctx.MakeError(err.Error())
+		}
+		ret += fmt.Sprintf("%s   is buy:%t   amount:%d   execution price:%d\n", stockSymbol, isBuy, amount, executionPrice)
+	}
+
+	return ret, nil
 }
 
 //TODO return and execute should be atomic
@@ -324,7 +368,7 @@ func Return(ctx *context.Context, holds ... Holding) error {
 
 	for _, hold := range holds {
 		h := Holding(hold)
-		err := h.receive(tx, ctx)
+		_, err := h.receive(tx, ctx)
 		if err != nil {
 			return err
 		}

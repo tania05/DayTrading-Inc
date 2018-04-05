@@ -267,9 +267,9 @@ func setAmount(userId string, stockSymbol string, isBuy bool, amount int) error 
 	triggerid := getTriggerId(userId, stockSymbol, isBuy)
 
 	results, err := db.Exec(`
-		INSERT INTO triggers(id, amount, is_buy)
-			VALUES ($1, $2, $3)
-	`, triggerid, amount, isBuy)
+		INSERT INTO triggers(id, amount, is_buy, user_id, stock_sym)
+			VALUES ($1, $2, $3, $4, $5)
+	`, triggerid, amount, isBuy, userId, stockSymbol)
 
 	if err != nil {
 		fmt.Printf("setAmount err: %s\n", err)
@@ -304,7 +304,7 @@ func setTrigger(userId string, stockSymbol string, isBuy bool, executionPrice in
 	row := tx.QueryRow(`
 		UPDATE triggers
 			SET execution_price = $1
-			WHERE id = $2
+			WHERE id = $2 AND execution_price IS NOT NULL 
 			RETURNING amount
 	`, executionPrice, triggerId)
 
@@ -378,38 +378,38 @@ func cancelSet(userId string, stockSymbol string, isBuy bool) error {
 	}
 	mutex.Unlock()
 
-	results, err := tx.Exec(`
+	row := tx.QueryRow(`
 		DELETE FROM triggers
 			WHERE id = $1
+			RETURNING (execution_price == NULL) as is_fully_set
 	`, triggerId)
 
+	var isFullySet bool
+	err = row.Scan(&isFullySet)
+
 	if err != nil {
 		return err
+	}
+
+	var results sql.Result
+
+	if isFullySet {
+		if isBuy {
+			results, err = tx.Exec(`
+				UPDATE users
+					SET money = money + $2
+					WHERE id = $1
+			`, userId, t.amount)
+		} else {
+			results, err = tx.Exec(`
+				UPDATE stocks
+				SET amount = amount + $3
+				WHERE user_id = $1 AND stock_sym = $2
+			`, userId, stockSymbol, int(t.amount/t.executionPrice))
+
+		}
 	}
 	rowsAffected, err := results.RowsAffected()
-	if err != nil {
-		return err
-	}
-
-	if rowsAffected != 1 {
-		return fmt.Errorf("Unexpected number of rows affected during trigger deletion")
-	}
-
-	if isBuy {
-		results, err = tx.Exec(`
-			UPDATE users
-				SET money = money + $2
-				WHERE id = $1
-		`, userId, t.amount)
-	} else {
-		results, err = tx.Exec(`
-			UPDATE stocks
-			SET amount = amount + $3
-			WHERE user_id = $1 AND stock_sym = $2
-		`, userId, stockSymbol, int(t.amount / t.executionPrice))
-
-	}
-	rowsAffected, err = results.RowsAffected()
 	if err != nil {
 		return err
 	}

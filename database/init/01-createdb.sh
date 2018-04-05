@@ -27,6 +27,8 @@ EOSQL
 
         CREATE TABLE triggers (
             id VARCHAR(68) PRIMARY KEY,
+            user_id VARCHAR(64),
+            stock_sym VARCHAR(3),
             execution_price INTEGER CHECK (execution_price >= 0),
             amount INTEGER CHECK (amount >= 0),
             is_buy BOOLEAN,
@@ -37,7 +39,7 @@ EOSQL
             id SERIAL PRIMARY KEY,
             user_id VARCHAR(64) REFERENCES users(id),
             money_amount INTEGER,
-            stock_sym VARCHAR(64),
+            stock_sym VARCHAR(64) CHECK (stock_sym <> ''),
             stock_amount INTEGER,
             is_buy BOOLEAN,
             created_at TIMESTAMP WITHOUT TIME ZONE

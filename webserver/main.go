@@ -21,6 +21,7 @@ import (
 	"common/quote"
 	"common/rpc/triggerstructs"
 	"common/hashing"
+	"webserver/internal/transaction"
 )
 
 
@@ -189,13 +190,14 @@ func PostAddHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, "", logger.Add)
-  err = addFunds(ctx, money.Money(payload.Amount))
+	newBalance, err := addFunds(ctx, money.Money(payload.Amount))
 	if err != nil {
 		w.WriteHeader(400)
+		io.WriteString(w, err.Error())
+	} else {
+		w.WriteHeader(http.StatusOK)
+		io.WriteString(w, fmt.Sprintf("Succcess, your new balance is %d.\n", newBalance))
 	}
-
-	w.WriteHeader(http.StatusOK)
-	io.WriteString(w, payload.UserId)
 }
 
 func GetQuoteHandler(w http.ResponseWriter, r *http.Request) {
@@ -225,9 +227,14 @@ func PostBuyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, payload.StockSymbol, logger.Buy)
-	transact(ctx, 1, money.Money(payload.Amount))
-	w.WriteHeader(http.StatusCreated)
-	io.WriteString(w, "Buy Command!")
+	price, amount, err := transact(ctx, 1, money.Money(payload.Amount))
+	if err != nil {
+		w.WriteHeader(400)
+		io.WriteString(w, err.Error())
+	} else {
+		w.WriteHeader(http.StatusCreated)
+		io.WriteString(w, fmt.Sprintf("Started transaction - buy %d of %s for %d\n", amount, payload.StockSymbol, int(price)))
+	}
 	// fmt.Println(transaction.CheckFunds(payload.UserId))
 	// fmt.Println(transaction.CheckStock(payload.UserId, payload.StockSymbol))
 }
@@ -243,9 +250,14 @@ func PutBuyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, "", logger.CommitBuy)	
-	commitTransact(ctx, 1)
-	io.WriteString(w, "Commit buy!")
-	w.WriteHeader(http.StatusOK)	
+	err = commitTransact(ctx, 1)
+	if err != nil {
+		w.WriteHeader(400)
+		io.WriteString(w, err.Error())
+	} else {
+		w.WriteHeader(http.StatusOK)
+		io.WriteString(w, "Successfully committed last buy transaction")
+	}
 	// fmt.Println(transaction.CheckFunds(payload.UserId))
 }
 
@@ -260,10 +272,14 @@ func DeleteBuyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, "", logger.CancelBuy)		
-	cancelTransact(ctx,1)
-	io.WriteString(w, "Cancel Buy!")
-	// fmt.Println(transaction.CheckFunds(payload.UserId))
-	w.WriteHeader(http.StatusOK)	
+	err = cancelTransact(ctx,1)
+	if err != nil {
+		w.WriteHeader(400)
+		io.WriteString(w, err.Error())
+	} else {
+		w.WriteHeader(http.StatusOK)
+		io.WriteString(w, "Successfully canceled last buy transaction")
+	}
 }
 
 func PostSellHandler(w http.ResponseWriter, r *http.Request) {
@@ -276,9 +292,14 @@ func PostSellHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, payload.StockSymbol, logger.Sell)			
-	transact(ctx, 0, money.Money(payload.Amount))
-	io.WriteString(w, "Sell!")
-	w.WriteHeader(http.StatusOK)	
+	price, amount, err := transact(ctx, 0, money.Money(payload.Amount))
+	if err != nil {
+		w.WriteHeader(400)
+		io.WriteString(w, err.Error())
+	} else {
+		w.WriteHeader(http.StatusCreated)
+		io.WriteString(w, fmt.Sprintf("Started transaction - sell %d of %s for %d\n", amount, payload.StockSymbol, int(price)))
+	}
 	// fmt.Println(transaction.CheckFunds(payload.UserId))
 	// fmt.Println(transaction.CheckStock(payload.UserId, payload.StockSymbol))
 }
@@ -295,8 +316,14 @@ func PutSellHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, "", logger.CommitSell)	
-	commitTransact(ctx, 0)
-	io.WriteString(w, "Commit Sell!")
+	err = commitTransact(ctx, 0)
+	if err != nil {
+		w.WriteHeader(400)
+		io.WriteString(w, err.Error())
+	} else {
+		w.WriteHeader(http.StatusOK)
+		io.WriteString(w, "Successfully committed last sell transaction")
+	}
 	// fmt.Println(transaction.CheckFunds(payload.UserId))
 }
 
@@ -311,9 +338,14 @@ func DeleteSellHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, "", logger.CancelSell)		
-	cancelTransact(ctx,0)
-	io.WriteString(w, "Cancel Sell!")
-	w.WriteHeader(http.StatusOK)
+	err = cancelTransact(ctx,0)
+	if err != nil {
+		w.WriteHeader(400)
+		io.WriteString(w, err.Error())
+	} else {
+		w.WriteHeader(http.StatusOK)
+		io.WriteString(w, "Successfully canceled last sell transaction")
+	}
 	// fmt.Println(transaction.CheckFunds(payload.UserId))
 }
 
@@ -338,11 +370,13 @@ func PostBuyTriggerHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil || response != nil{
-		//TODO error handling logic
+		w.WriteHeader(400)
+		io.WriteString(w, err.Error())
+	} else {
+		w.WriteHeader(200)
+		io.WriteString(w, fmt.Sprintf("Began create buy trigger for %s for amount %d successfully", payload.StockSymbol, payload.Amount))
 	}
 
-	w.WriteHeader(http.StatusOK)
-	io.WriteString(w, "Set Buy Amount!")
 }
 
 //SetBuyTrigger
@@ -367,10 +401,12 @@ func PutBuyTriggerHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil || response != nil{
-		//TODO error handling logic
+		w.WriteHeader(400)
+		io.WriteString(w, err.Error())
+	} else {
+		w.WriteHeader(400)
+		io.WriteString(w, fmt.Sprintf("Finished setting up  buy trigger for %s with execution price %d successfully", payload.StockSymbol, payload.Amount))
 	}
-	w.WriteHeader(http.StatusOK)
-	io.WriteString(w, "Set Buy Trigger!")
 }
 
 func DeleteBuyTriggerHandler(w http.ResponseWriter, r *http.Request) {
@@ -391,10 +427,12 @@ func DeleteBuyTriggerHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil || response != nil{
-		//TODO error handling logic
+		w.WriteHeader(400)
+		io.WriteString(w, err.Error())
+	} else {
+		w.WriteHeader(400)
+		io.WriteString(w, fmt.Sprintf("Deleted or Canceled buy trigger successfully."))
 	}
-	w.WriteHeader(http.StatusOK)
-	io.WriteString(w, "Cancel Buy Trigger!")
 }
 
 //SetSellAmount
@@ -419,11 +457,12 @@ func PostSellTriggerHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil || response != nil{
-		//TODO error handling logic
+		w.WriteHeader(400)
+		io.WriteString(w, err.Error())
+	} else {
+		w.WriteHeader(200)
+		io.WriteString(w, fmt.Sprintf("Began create sell trigger for %s for amount %d successfully", payload.StockSymbol, payload.Amount))
 	}
-
-	w.WriteHeader(http.StatusOK)
-	io.WriteString(w, "Set sell amount!")
 }
 
 //SetSellTrigger
@@ -450,11 +489,12 @@ func PutSellTriggerHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil || response != nil{
-		//TODO error handling logic
+		w.WriteHeader(400)
+		io.WriteString(w, err.Error())
+	} else {
+		w.WriteHeader(400)
+		io.WriteString(w, fmt.Sprintf("Finished setting up sell trigger for %s with execution price %d successfully", payload.StockSymbol, payload.Amount))
 	}
-
-	w.WriteHeader(http.StatusOK)
-	io.WriteString(w, "Set Sell Trigger!")
 }
 
 func DeleteSellTriggerHandler(w http.ResponseWriter, r *http.Request) {
@@ -477,10 +517,12 @@ func DeleteSellTriggerHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil || response != nil{
-		//TODO error handling logic
+		w.WriteHeader(400)
+		io.WriteString(w, err.Error())
+	} else {
+		w.WriteHeader(400)
+		io.WriteString(w, fmt.Sprintf("Deleted or Canceled sell trigger successfully."))
 	}
-	w.WriteHeader(http.StatusOK)
-	io.WriteString(w, "Cancel sell trigger!")
 }
 
 func PostAdminDumpLogHandler(w http.ResponseWriter, r *http.Request) {
@@ -514,8 +556,6 @@ func PostDumpLogHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetDisplaySummaryHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-
 	var payload DisplaySummary
 	body, _ := ioutil.ReadAll(r.Body)
 	err := json.Unmarshal(body, &payload)
@@ -524,7 +564,17 @@ func GetDisplaySummaryHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	context.MakeContext(payload.TransactionNum, payload.UserId, "", logger.DisplaySummary)
+	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, "", logger.DisplaySummary)
+	summary, err := transaction.Summary(ctx, payload.UserId)
+
+	if err != nil {
+		w.WriteHeader(400)
+		io.WriteString(w, err.Error())
+	} else {
+		w.WriteHeader(http.StatusOK)
+		io.WriteString(w, summary)
+	}
+
 
 }
 
@@ -587,7 +637,5 @@ func main() {
 	port := config.GlobalConfig.WebServer.Port
 	addr := ":" + strconv.Itoa(port)
 
-	fmt.Printf("Listening on %d\n", port)
-	fmt.Println(RegisterServer(port))
 	log.Fatal(http.ListenAndServe(addr, nil))
 }
