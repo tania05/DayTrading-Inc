@@ -111,6 +111,11 @@ type XmlLoggable interface {
 	AsXml() ([]byte, error)
 }
 
+type DumpAdmin struct {
+	TransactionNum int64
+	FileName string
+  }
+
 const (
 	FUserCommandLog = "UserCommandLog"
 	FQuoteServerLog = "QuoteServerLog"
@@ -118,6 +123,7 @@ const (
 	FSystemEventLog = "SystemEventLog"
 	FErrorEventLog = "ErrorEventLog"
 	FDebugEventLog = "DebugEventLog"
+	FAdminDumplog = "AdminDumplog"
 )
 
 
@@ -162,6 +168,7 @@ func init() {
 	gorpc.RegisterType(&SystemEventLog{})
 	gorpc.RegisterType(&ErrorEventLog{})
 	gorpc.RegisterType(&DebugEventLog{})
+	gorpc.RegisterType(&DumpAdmin{})
 
 	dispatcher = gorpc.NewDispatcher()
 	dispatcher.AddFunc(FUserCommandLog, func(v *UserCommandLog) error { return nil })
@@ -170,6 +177,7 @@ func init() {
 	dispatcher.AddFunc(FSystemEventLog , func(v *SystemEventLog) error { return nil })
 	dispatcher.AddFunc(FErrorEventLog, func(v *ErrorEventLog) error { return nil })
 	dispatcher.AddFunc(FDebugEventLog, func(v *DebugEventLog) error { return nil })
+	dispatcher.AddFunc(FAdminDumplog, func(v *DumpAdmin) error { return nil })
 
 	auditClient = &gorpc.Client{
 		Addr: fmt.Sprintf("%s:%d",
@@ -179,6 +187,14 @@ func init() {
 
 	fmt.Println("Connecting to audit server")
 	auditClient.Start()
+}
+
+func AdminDumplog(dump DumpAdmin) {
+	client := dispatcher.NewFuncClient(auditClient)	
+	_, err := client.Call(FAdminDumplog, dump)
+	if err != nil {
+		fmt.Println("Err Printing Dumplog, ", err)
+	}
 }
 
 func Log(msg XmlLoggable) {

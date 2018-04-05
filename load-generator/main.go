@@ -6,7 +6,11 @@ import "strings"
 import "strconv"
 import "net/http"
 import "encoding/json"
-import "bytes"
+import (
+  "bytes"
+  "os"
+  "time"
+)
 
 type AddCommand struct {
   TransactionNum int64
@@ -114,36 +118,34 @@ type Command interface {
   request() string
 }
 
-const lburl = "http://127.0.0.1:5555"
+const url = "http://127.0.0.1:8000"
 const post = "POST"
 const put = "PUT"
 const delete = "DELETE"
 const get = "GET"
 
-var loadBalanceMap map[string]string = make(map[string]string)
+var errorCount int
 
-
-func postRequest(path string, url string, reqType string, payload interface{}) string{
+func postRequest(path string, reqType string, payload interface{}) string{
   buff, _ := json.Marshal(payload)
-  fmt.Println(url)
-  req, e := http.NewRequest(strings.ToUpper(reqType), "http://"+url+path, bytes.NewBuffer(buff))
-  if (e!= nil){
-    panic(e)
-  }
+  req, _ := http.NewRequest(strings.ToUpper(reqType), url+path, bytes.NewBuffer(buff))
   req.Header.Add("Content-Type","application/json") 
   resp, e := http.DefaultClient.Do(req)
 
   if (e!= nil){
-    panic(e)
+    time.Sleep(2 * time.Second)
+    fmt.Println("error: ", e)
+    return postRequest(path, reqType, payload)
+  } else {
+    defer resp.Body.Close()
+    bs, _ := ioutil.ReadAll(resp.Body)
+    return fmt.Sprintln(string(bs))
   }
   
-  defer resp.Body.Close()    
-  bs, _ := ioutil.ReadAll(resp.Body)
-  return fmt.Sprintln(string(bs))
 }
 
-func getRequest(path string, url string) string{ 
-  req, _ := http.NewRequest("GET", "http://"+url+path, nil)
+func getRequest(path string) string{ 
+  req, _ := http.NewRequest("GET", url+path, nil)
   resp, e := http.DefaultClient.Do(req)
   if (e!= nil){
     panic(e)
@@ -156,107 +158,131 @@ func getRequest(path string, url string) string{
 
 func (command AddCommand) request() string {
   //return fmt.Sprintln("AddCommand")
-  return postRequest("/users", loadBalanceMap[command.UserId], post, command)
+  return postRequest("/users", post, command)
 }
 
 func (command QuoteCommand) request() string {
   // return fmt.Sprintln("QuoteCommand")  
-  return postRequest("/stocks/"+command.StockSymbol+"/quote", loadBalanceMap[command.UserId], post, command)
+  return postRequest("/stocks/"+command.StockSymbol+"/quote", post, command)
 }
 
 func (command BuyCommand) request() string {
   // return fmt.Sprintln("BuyCommand")  
-  return postRequest("/stocks/"+command.StockSymbol+"/buy", loadBalanceMap[command.UserId], post, command)
+  return postRequest("/stocks/"+command.StockSymbol+"/buy", post, command)
 }
 
 func (command CommitBuyCommand) request() string {
   // return fmt.Sprintln("CommitBuyCommand")  
-  return postRequest("/stocks/buy", loadBalanceMap[command.UserId], put, command)
+  return postRequest("/stocks/buy", put, command)
 }
 
 func (command CancelBuyCommand) request() string {
   // return fmt.Sprintln("CancelBuyCommand")
-  return postRequest("/stocks/buy", loadBalanceMap[command.UserId], delete, command)
+  return postRequest("/stocks/buy", delete, command)
 }
 
 func (command SellCommand) request() string {
   // return fmt.Sprintln("SellCommand")
-  return postRequest("/stocks/"+command.StockSymbol+"/sell", loadBalanceMap[command.UserId], post, command)
+  return postRequest("/stocks/"+command.StockSymbol+"/sell", post, command)
 }
 
 func (command CommitSellCommand) request() string {
   // return fmt.Sprintln("CommitSellCommand")
-  return postRequest("/stocks/sell", loadBalanceMap[command.UserId], put, command)
+  return postRequest("/stocks/sell", put, command)
 }
 
 func (command CancelSellCommand) request() string {
   // return fmt.Sprintln("CancelSellCommand")
-  return postRequest("/stocks/sell", loadBalanceMap[command.UserId], delete, command)
+  return postRequest("/stocks/sell", delete, command)
 }
 
 func (command SetBuyAmountCommand) request() string {
   // return fmt.Sprintln("SetBuyAmountCommand")
-  return postRequest("/triggers/"+command.StockSymbol+"/buy", loadBalanceMap[command.UserId], post, command)
+  return postRequest("/triggers/"+command.StockSymbol+"/buy", post, command)
 }
 
 func (command CancelSetBuyCommand) request() string {
   // return fmt.Sprintln("CancelSetBuyCommand")
-  return postRequest("/triggers/"+command.StockSymbol+"/buy", loadBalanceMap[command.UserId], post, command)
+  return postRequest("/triggers/"+command.StockSymbol+"/buy", post, command)
 }
 
 func (command SetBuyTriggerCommand) request() string {
   // return fmt.Sprintln("SetBuyTriggerCommand")
-  return postRequest("/triggers/"+command.StockSymbol+"/buy", loadBalanceMap[command.UserId], post, command)
+  return postRequest("/triggers/"+command.StockSymbol+"/buy", post, command)
 }
 
 func (command SetSellAmountCommand) request() string {
   // return fmt.Sprintln("SetSellAmountCommand")
-  return postRequest("/triggers/"+command.StockSymbol+"/sell", loadBalanceMap[command.UserId], post, command)
+  return postRequest("/triggers/"+command.StockSymbol+"/sell", post, command)
 }
 
 func (command CancelSetSellCommand) request() string {
   // return fmt.Sprintln("CanceletSellCommand")
-  return postRequest("/triggers/"+command.StockSymbol+"/sell", post, loadBalanceMap[command.UserId], command)
+  return postRequest("/triggers/"+command.StockSymbol+"/sell", post, command)
 }
 
 func (command SetSellTriggerCommand) request() string {
   // return fmt.Sprintln("SetSellTriggerCommand")
-  return postRequest("/triggers/"+command.StockSymbol+"/sell", loadBalanceMap[command.UserId], post, command)
+  return postRequest("/triggers/"+command.StockSymbol+"/sell", post, command)
 }
 
 func (command DumplogCommand) request() string {
   // return fmt.Sprintln("DumplogCommand")
-  return postRequest("/"+command.UserId+"/dump", loadBalanceMap[command.UserId], post, command)
+  return postRequest("/"+command.UserId+"/dump", post, command)
 }
 
 func (command AdminDumblogCommand) request() string {
   // return fmt.Sprintln("AdminDumpLogCommand")
-  return postRequest("/dump", lburl, post, command)
+  return postRequest("/dump", post, command)
 }
 
 func (command DisplaySummary) request() string {
   // return fmt.Sprintln("DisplaySummaryCommand")
-  return postRequest("/users/" + command.UserId + "/summary", loadBalanceMap[command.UserId], post, command)
+  return postRequest("/users/" + command.UserId + "/summary", post, command)
 }
 
 func handleCommand(userMap map[string][]Command) {
+  fmt.Println("Total users: ", len(userMap))
+  gen_id_str := os.Getenv("GENERATOR_ID")
+  total_gen_str := os.Getenv("TOTAL_GENERATORS")
+
+  gen_id, err := strconv.Atoi(gen_id_str)
+  if err != nil {
+    panic(err)
+  }
+
+  total_gen, err := strconv.Atoi(total_gen_str)
+  if err != nil {
+    panic(err)
+  }
+
+  i := 0
+
   done := make(chan int, 250)
+  count := 0
   for key, value := range userMap {
+    i++
+    if i % total_gen != gen_id {
+      continue
+    }
+    count++
     go func(userId string, commands [] Command, done chan int){
-      for _, n := range commands{
+      for k, n := range commands{
         fmt.Println(n.request())
+        fmt.Println("[", k, "/", len(commands), "]")
       }
       done <- 0      
     }(key, value, done)
   }
 
-  for range userMap {
+  fmt.Println("count", count)
+  for fin := 0; fin < count; fin++ {
     <-done
   }
 }
 
 func main() {
-  b, err := ioutil.ReadFile("10userWorkLoad.txt")
+  b, err := ioutil.ReadFile("testDump.txt")
 
   if (err != nil) {
     panic(err)
@@ -265,8 +291,6 @@ func main() {
   lines := strings.Split(string(b), "\n")
   //// "string", [] if not empty
   userMap := make(map[string][]Command)
-
-
   for _, line := range lines {
     line = strings.Trim(line, "\n\r \t")
     parts := strings.Split(line, ",")
@@ -283,26 +307,6 @@ func main() {
     // fmt.Println(commandType)
     // transactionNum, commandType := strings.Split(parts[0], " ")
     
-    ip, ok := loadBalanceMap[userId]
-    if (ok) {
-      fmt.Println("Found ip: ", ip)
-    } else {
-      req, _ := http.NewRequest("GET", lburl+"/users", nil)
-      req.Header.Add("Content-Type","application/json") 
-      resp, e := http.DefaultClient.Do(req)
-
-      if (e!= nil){
-        panic(e)
-      }
-      defer resp.Body.Close()    
-      bs, _ := ioutil.ReadAll(resp.Body)
-      loadBalanceMap[userId] = string(bs)
-      fmt.Println(string(bs))
-    }
-
-  
-    
-
     switch commandType{
     case "ADD":
       a64, err := strconv.ParseInt(strings.Replace(parts[2],".","",-1),10,0)

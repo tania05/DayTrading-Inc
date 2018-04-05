@@ -96,23 +96,6 @@ services:
 
   database0: &database
     image: 127.0.0.1:5000/database
-    ports:
-     - "5432:5432"
-    environment:
-      restart: always
-    networks:
-        - backend
-    build:
-      context: database
-      dockerfile: Dockerfile
-
-  database1:
-    <<: *database
-  database2:
-    <<: *database
-
-  database0: &database
-    image: 127.0.0.1:5000/database
     deploy:
       placement:
         constraints:
