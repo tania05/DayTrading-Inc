@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<body>
+	<title>Seng 468 client</title>
+	<link rel="stylesheet" type="text/css" href="style.css">
+	<script type="text/javascript" src="menu.js"></script>
+
+</head>
+<body>
+	<div id=info>
+		<p>User id:</p>
+		<p id=uid></p>
+	</div>
+	<div id=menu>
+		<div id=add class="command">
+			<input id=add_amount type="text" placeholder="amount"></input>
+			<button onclick="add()">add</button>
+		</div>
+		<div id=quote class="command">
+			<input id=quote_stock type="text" placeholder="stock sym"></input>
+			<button onclick="quote()">quote</button>
+		</div>
+		<div id=buy class="command">
+			<input id=buy_stock type="text" placeholder="stock sym"></input>
+			<input id=buy_amount type="text" placeholder="amount"></input>
+			<button onclick="buy()">buy</button>
+		</div>
+		<div id=commit_buy class="command">
+			<button onclick="commitbuy()">commit buy</button>
+		</div>
+		<div id=cancel_buy class="command">
+			<button onclick="cancelbuy()">cancel buy</button>
+		</div>
+		<div id=sell class="command">
+			<input id=sell_stock type="text" placeholder="stock sym"></input>
+			<input id=sell_amount type="text" placeholder="amount"></input>
+			<button onclick="sell()">sell</button>
+		</div>
+		<div id=commit_sell class="command">
+			<button onclick="commitsell()">commit sell</button>
+		</div>
+		<div id=cancel_sell class="command">
+			<button onclick="cancelsell()">cancel sell</button>
+		</div>
+		<div id=set_buy class="command">
+			<input id=set_buy_stock type="text" placeholder="stock sym"></input>
+			<input id=set_buy_amount type="text" placeholder="amount"></input>
+			<button onclick="setbuy()">set buy</button>
+		</div>
+		<div id=set_buy_cancel class="command">
+			<input id=set_buy_cancel_stock type="text" placeholder="stock sym"></input>
+			<button onclick="setbuycancel()">set buy cancel</button>
+		</div>
+		<div id=set_buy_trigger class="command">
+			<input id=set_buy_trigger_stock type="text" placeholder="stock sym"></input>
+			<input id=set_buy_trigger_amount type="text" placeholder="amount"></input>
+			<button onclick="setbuytrigger()">set buy trigger</button>
+		</div>
+		<div id=set_sell class="command">
+			<input id=set_sell_stock type="text" placeholder="stock sym"></input>
+			<input id=set_sell_amount type="text" placeholder="amount"></input>
+			<button onclick="setsell()">set sell</button>
+		</div>
+		<div id=set_sell_cancel class="command">
+			<input id=set_sell_cancel_stock type="text" placeholder="stock sym"></input>
+			<button onclick="setsellcancel()">set sell cancel</button>
+		</div>
+		<div id=set_sell_trigger class="command">
+			<input id=set_sell_trigger_stock type="text" placeholder="stock sym"></input>
+			<input id=set_sell_trigger_amount type="text" placeholder="amount"></input>
+			<button onclick="setselltrigger()">set sell trigger</button>
+		</div>
+		<div id=dumplog class="command">
+			<input id=dumplog_user type="text" placeholder="Jeff"></input>
+			<input id=dumplog_file type="text" placeholder="filename"></input>
+			<button onclick="dumplog()">dumplog</button>
+		</div>
+		<div id=dumplog_all class="command">
+			<input id=dumplog_all_file type="text" placeholder="filename"></input>
+			<button onclick="dumplogall()">dumplog all</button>
+		</div>
+		<div id=summary class="command">
+			<input id=summary_user type="text" placeholder="Jeff"></input>
+			<button onclick="summary()">display summary</button>
+		</div>
+	</div>
+</body>
+</html>

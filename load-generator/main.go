@@ -118,7 +118,7 @@ type Command interface {
   request() string
 }
 
-const url = "http://127.0.0.1:8000"
+const url = "http://10.0.75.1:8000"
 const post = "POST"
 const put = "PUT"
 const delete = "DELETE"
@@ -282,7 +282,7 @@ func handleCommand(userMap map[string][]Command) {
 }
 
 func main() {
-  b, err := ioutil.ReadFile("100User_testWorkLoad")
+  b, err := ioutil.ReadFile("testDump.txt")
 
   if (err != nil) {
     panic(err)

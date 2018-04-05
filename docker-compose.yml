@@ -13,6 +13,9 @@ services:
         condition: on-failure
     depends_on:
       - redis
+      - database0
+      - database1
+      - database2
     build:
       args:
         - buildpath=webserver
@@ -40,6 +43,9 @@ services:
     image: 127.0.0.1:5000/trigger
     depends_on:
       - redis
+      - database0
+      - database1
+      - database2
     build:
       args:
         - buildpath=trigger
@@ -101,7 +107,8 @@ services:
 
   database1:
     <<: *database
-
+  database2:
+    <<: *database
 networks:
     frontend:
     backend:

@@ -157,7 +157,6 @@ func setupTriggerRpcs() {
 	dispatcher.AddFunc(triggerstructs.FCancelSetBuyCommand, func(v *triggerstructs.CancelSetBuyCommand) error { return nil })
 	dispatcher.AddFunc(triggerstructs.FCancelSetSellCommand, func(v *triggerstructs.CancelSetSellCommand) error { return nil })
 
-
 	triggerServers = make([]*gorpc.Client, triggerCount)
 	for i := 0; i < triggerCount; i++ {
 		triggerServers[i] = &gorpc.Client{
@@ -536,7 +535,10 @@ func PostAdminDumpLogHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	defer r.Body.Close()
-
+	var dump logger.DumpAdmin
+	dump.TransactionNum = payload.TransactionNum
+	dump.FileName = payload.FileName
+	logger.AdminDumplog(dump)
 	context.MakeContext(payload.TransactionNum, "", "", logger.DumpLog)
 }
 
@@ -637,5 +639,6 @@ func main() {
 	port := config.GlobalConfig.WebServer.Port
 	addr := ":" + strconv.Itoa(port)
 
+	fmt.Printf("Listening on %d\n", port)
 	log.Fatal(http.ListenAndServe(addr, nil))
 }
