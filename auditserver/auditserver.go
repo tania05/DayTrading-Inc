@@ -8,6 +8,7 @@ import (
 	"common/logger"
 	"os"
 	"time"
+	"os/exec"
 )
 
 func setupQuoteRpcs() {
@@ -91,6 +92,11 @@ func main() {
 
 func AdminDumplog(dump logger.DumpAdmin) error {
 	fmt.Println("You have hit the admin dump log")
+	cmd := exec.Command("cp", "log", dump.FileName)
+	if err := cmd.Run(); err != nil {
+		fmt.Println("Sorry couldn't make the dump log. Dying.")
+		panic(err)
+	}
 	return nil
 }
 

@@ -590,6 +590,5 @@ func main() {
 	addr := ":" + strconv.Itoa(port)
 
 	fmt.Printf("Listening on %d\n", port)
-	fmt.Println(RegisterServer(port))
 	log.Fatal(http.ListenAndServe(addr, nil))
 }
