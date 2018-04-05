@@ -1,6 +1,6 @@
 [QuoteServer]
 Domain = "quoteserver"
-Port = 8080
+Port = 4441
 
 [WebServer]
 Domain = "webserver"
@@ -9,3 +9,23 @@ Port = 8080
 [Redis]
 Domain = "redis"
 Port = 6379
+
+[Database]
+Username = "postgres"
+Password = "mysecretpass"
+Database = "quote"
+Domain = "database"
+Port = 5432
+SSLMode = "disable"
+
+[LoadBalancer]
+Domain = "loadbalancer"
+port = 5555
+
+[Trigger]
+Domain = "trigger"
+port = 12345
+
+[AuditServer]
+Domain = "auditserver"
+port = 9999
