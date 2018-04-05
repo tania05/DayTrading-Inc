@@ -13,21 +13,13 @@ services:
         condition: on-failure
     depends_on:
       - redis
-      - database0
-      - database1
-      - database2
-      - database3
-      - database4
-      - database5
-      - database6
-      - loadbalancer
     build:
       args:
         - buildpath=webserver
       dockerfile: go-build/Dockerfile
       context: .
     extra_hosts:
-      - "quoteserver:192.168.1.135"
+      - "quoteserver:10.0.75.1"
     networks:
         - frontend
         - backend
@@ -35,7 +27,7 @@ services:
     ports:
      - "8000:8080"
     environment:
-      - "DATABASE_COUNT=7"
+      - "DATABASE_COUNT=2"
       - "TRIGGER_COUNT=1"
 
   trigger0: &trigger
@@ -48,13 +40,6 @@ services:
     image: 127.0.0.1:5000/trigger
     depends_on:
       - redis
-      - database0
-      - database1
-      - database2
-      - database3
-      - database4
-      - database5
-      - database6
     build:
       args:
         - buildpath=trigger
@@ -67,7 +52,7 @@ services:
       - backend
     command: /app/bin/trigger
     environment:
-      - "DATABASE_COUNT=3"
+      - "DATABASE_COUNT=2"
     ports: []
 
   redis:
@@ -84,6 +69,11 @@ services:
 
   auditserver: 
     image: 127.0.0.1:5000/auditserver
+    deploy:
+      placement:
+        constraints:
+          - node.hostname != b132.seng
+          - node.hostname != b136.seng
     build:
       args:
         - buildpath=auditserver
@@ -93,23 +83,6 @@ services:
       - backend
     command: /app/bin/auditserver
     ports: []
-
-  database0: &database
-    image: 127.0.0.1:5000/database
-    ports:
-     - "5432:5432"
-    environment:
-      restart: always
-    networks:
-        - backend
-    build:
-      context: database
-      dockerfile: Dockerfile
-
-  database1:
-    <<: *database
-  database2:
-    <<: *database
 
   database0: &database
     image: 127.0.0.1:5000/database
@@ -128,34 +101,6 @@ services:
 
   database1:
     <<: *database
-  database2:
-    <<: *database
-  database3:
-    <<: *database
-  database4:
-    <<: *database
-  database5:
-    <<: *database
-  database6:
-    <<: *database  
-
-  loadbalancer:
-    image: 127.0.0.1:5000/loadbalancer
-    deploy:
-      placement:
-        constraints:
-          - node.hostname != b132.seng
-          - node.hostname != b136.seng
-    build:
-      args:
-        - buildpath=load-balancer
-      dockerfile: go/Dockerfile
-      context: .
-    networks:
-        - frontend
-    command: /app/bin/load-balancer
-    ports:
-      - 5555:5555
 
 networks:
     frontend:
