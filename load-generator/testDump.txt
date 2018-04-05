@@ -1,2 +1,6 @@
 [1] ADD,oY01WVirLr,63511.53 
-[2] DUMPLOG,./testLOG
+[2] ADD,Fuspmx2FbF,45016.23
+[3] ADD,Fuspmx2FbF,45016.23  
+[4] DUMPLOG,./testLOG
+[5] DUMPLOG,oY01WVirLr,./dumplogFile
+[6] DUMPLOG,Fuspmx2FbF,./dumplogFile2

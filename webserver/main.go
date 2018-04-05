@@ -542,11 +542,21 @@ func PostAdminDumpLogHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	defer r.Body.Close()
+	context.MakeContext(payload.TransactionNum, "", "", logger.DumpLog)
+
+
 	var dump logger.DumpAdmin
 	dump.TransactionNum = payload.TransactionNum
 	dump.FileName = payload.FileName
-	logger.AdminDumplog(dump)
-	context.MakeContext(payload.TransactionNum, "", "", logger.DumpLog)
+	err = logger.AdminDumplog(dump)
+
+	if err != nil {
+		w.WriteHeader(400)
+		io.WriteString(w, "Unable to dump log file")
+	} else {
+		w.WriteHeader(http.StatusOK)
+		io.WriteString(w, "Successfully created dump log file")
+	}
 }
 
 func PostDumpLogHandler(w http.ResponseWriter, r *http.Request) {
@@ -560,8 +570,20 @@ func PostDumpLogHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	defer r.Body.Close()
-
 	context.MakeContext(payload.TransactionNum, payload.UserId, "", logger.DumpLog)
+
+	var dump logger.DumplogCommand
+	dump.TransactionNum = payload.TransactionNum
+	dump.UserId = payload.UserId
+	dump.FileName = payload.FileName
+	err = logger.Dumplog(dump)
+	if err != nil {
+		w.WriteHeader(400)
+		io.WriteString(w, "Unable to dump log file")
+	} else {
+		w.WriteHeader(http.StatusOK)
+		io.WriteString(w, "Successfully created dump log file")
+	}
 }
 
 func GetDisplaySummaryHandler(w http.ResponseWriter, r *http.Request) {
@@ -637,7 +659,7 @@ func main() {
 	r.Path("/triggers/{stockSym}/sell").Methods("PUT").HandlerFunc(PutSellTriggerHandler);
 	r.Path("/triggers/{stockSym}/sell").Methods("DELETE").HandlerFunc(DeleteSellTriggerHandler);
 
-	r.Path("/users/dump").Methods("POST").HandlerFunc(PostDumpLogHandler);
+	r.Path("/{userId}/dump").Methods("POST").HandlerFunc(PostDumpLogHandler);
 	r.Path("/dump").Methods("POST").HandlerFunc(PostAdminDumpLogHandler);
 	r.Path("/users/{userId}/summary").Methods("POST").HandlerFunc(GetDisplaySummaryHandler);
 

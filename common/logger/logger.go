@@ -114,7 +114,13 @@ type XmlLoggable interface {
 type DumpAdmin struct {
 	TransactionNum int64
 	FileName string
-  }
+}
+
+type DumplogCommand struct {
+	TransactionNum int64
+	UserId string
+	FileName string
+}
 
 const (
 	FUserCommandLog = "UserCommandLog"
@@ -124,6 +130,7 @@ const (
 	FErrorEventLog = "ErrorEventLog"
 	FDebugEventLog = "DebugEventLog"
 	FAdminDumplog = "AdminDumplog"
+	FDumplog = "Dumplog"
 )
 
 
@@ -164,6 +171,7 @@ func init() {
 	gorpc.RegisterType(&ErrorEventLog{})
 	gorpc.RegisterType(&DebugEventLog{})
 	gorpc.RegisterType(&DumpAdmin{})
+	gorpc.RegisterType(&DumplogCommand{})
 
 	dispatcher = gorpc.NewDispatcher()
 	dispatcher.AddFunc(FUserCommandLog, func(v *UserCommandLog) error { return nil })
@@ -173,7 +181,7 @@ func init() {
 	dispatcher.AddFunc(FErrorEventLog, func(v *ErrorEventLog) error { return nil })
 	dispatcher.AddFunc(FDebugEventLog, func(v *DebugEventLog) error { return nil })
 	dispatcher.AddFunc(FAdminDumplog, func(v *DumpAdmin) error { return nil })
-
+	dispatcher.AddFunc(FDumplog, func(v *DumplogCommand) error {return nil})
 	auditClient = &gorpc.Client{
 		Addr: fmt.Sprintf("%s:%d",
 			config.GlobalConfig.AuditServer.Domain,
@@ -184,12 +192,26 @@ func init() {
 	auditClient.Start()
 }
 
-func AdminDumplog(dump DumpAdmin) {
+func AdminDumplog(dump DumpAdmin) error {
 	client := dispatcher.NewFuncClient(auditClient)	
 	_, err := client.Call(FAdminDumplog, dump)
 	if err != nil {
 		fmt.Println("Err Printing Dumplog, ", err)
+		return err
 	}
+
+	return nil
+}
+
+func Dumplog(dump DumplogCommand) error {
+	client := dispatcher.NewFuncClient(auditClient)	
+	_, err := client.Call(FDumplog, dump)
+	if err != nil {
+		fmt.Println("Err Printing Dumplog for the user, ", err)
+		return err
+	}
+
+	return nil
 }
 
 func Log(msg XmlLoggable) {
