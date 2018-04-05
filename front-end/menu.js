@@ -11,7 +11,7 @@ function add(){
 	var r = new XMLHttpRequest();
 	r.open("POST", "/users", true)
 	r.setRequestHeader("Content-type", "application/json")
-	r.send(JSON.stringify({TransactionNum: 1, UserId: user_id, Amount: amount}))
+	r.send(JSON.stringify({TransactionNum: 1, UserId: user_id, Amount: parseInt(amount)}))
 	r.onreadystatechange = function(){
 		if(r.readyState == 4){
 			alert(r.response)
@@ -38,7 +38,7 @@ function buy() {
 	var r = new XMLHttpRequest();
 	r.open("POST", "/stocks/"+stock+"/buy", true)
 	r.setRequestHeader("Content-type", "application/json")
-	r.send(JSON.stringify({TransactionNum: 1, UserId: user_id, StockSymbol: stock, Amount: amount}))
+	r.send(JSON.stringify({TransactionNum: 1, UserId: user_id, StockSymbol: stock, Amount: parseInt(amount)}))
 	r.onreadystatechange = function(){
 		if(r.readyState == 4){
 			alert(r.response)
@@ -76,7 +76,7 @@ function sell() {
 	var r = new XMLHttpRequest();
 	r.open("POST", "/stocks/"+stock+"/sell", true)
 	r.setRequestHeader("Content-type", "application/json")
-	r.send(JSON.stringify({TransactionNum: 1, UserId: user_id, StockSymbol: stock, Amount: amount}))
+	r.send(JSON.stringify({TransactionNum: 1, UserId: user_id, StockSymbol: stock, Amount: parseInt(amount)}))
 	r.onreadystatechange = function(){
 		if(r.readyState == 4){
 			alert(r.response)
@@ -114,7 +114,7 @@ function setbuy() {
 	var r = new XMLHttpRequest();
 	r.open("POST", "/triggers/"+stock+"/buy", true)
 	r.setRequestHeader("Content-type", "application/json")
-	r.send(JSON.stringify({TransactionNum: 1, UserId: user_id, StockSymbol: stock, Amount: amount}))
+	r.send(JSON.stringify({TransactionNum: 1, UserId: user_id, StockSymbol: stock, Amount: parseInt(amount)}))
 	r.onreadystatechange = function(){
 		if(r.readyState == 4){
 			alert(r.response)
@@ -141,7 +141,7 @@ function setbuytrigger() {
 	var r = new XMLHttpRequest();
 	r.open("PUT", "/triggers/"+stock+"/buy", true)
 	r.setRequestHeader("Content-type", "application/json")
-	r.send(JSON.stringify({TransactionNum: 1, UserId: user_id, StockSymbol: stock, Amount: amount}))
+	r.send(JSON.stringify({TransactionNum: 1, UserId: user_id, StockSymbol: stock, Amount: parseInt(amount)}))
 	r.onreadystatechange = function(){
 		if(r.readyState == 4){
 			alert(r.response)
@@ -155,7 +155,7 @@ function setsell() {
 	var r = new XMLHttpRequest();
 	r.open("POST", "/triggers/"+stock+"/sell", true)
 	r.setRequestHeader("Content-type", "application/json")
-	r.send(JSON.stringify({TransactionNum: 1, UserId: user_id, StockSymbol: stock, Amount: amount}))
+	r.send(JSON.stringify({TransactionNum: 1, UserId: user_id, StockSymbol: stock, Amount: parseInt(amount)}))
 	r.onreadystatechange = function(){
 		if(r.readyState == 4){
 			alert(r.response)
@@ -182,7 +182,7 @@ function setselltrigger() {
 	var r = new XMLHttpRequest();
 	r.open("PUT", "/triggers/"+stock+"/sell", true)
 	r.setRequestHeader("Content-type", "application/json")
-	r.send(JSON.stringify({TransactionNum: 1, UserId: user_id, StockSymbol: stock, Amount: amount}))
+	r.send(JSON.stringify({TransactionNum: 1, UserId: user_id, StockSymbol: stock, Amount: parseInt(amount)}))
 	r.onreadystatechange = function(){
 		if(r.readyState == 4){
 			alert(r.response)

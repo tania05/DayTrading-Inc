@@ -25,6 +25,7 @@ FROM ubuntu:16.04
 COPY --from=0 /app/bin/$buildpath /app/bin/$buildpath
 # Yes, this is in the root directory
 ADD config.toml config.toml
+ADD front-end static
 
 EXPOSE 8080
 CMD ["/bin/sh"]

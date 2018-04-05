@@ -304,7 +304,7 @@ func setTrigger(userId string, stockSymbol string, isBuy bool, executionPrice in
 	row := tx.QueryRow(`
 		UPDATE triggers
 			SET execution_price = $1
-			WHERE id = $2 AND execution_price IS NOT NULL 
+			WHERE id = $2 AND execution_price IS NULL
 			RETURNING amount
 	`, executionPrice, triggerId)
 
@@ -314,14 +314,23 @@ func setTrigger(userId string, stockSymbol string, isBuy bool, executionPrice in
 		return err // TODO logger
 	}
 
+	fmt.Println("isBuy", isBuy)
 	if isBuy {
-		_, err = tx.Exec(`
+		results, err := tx.Exec(`
 			UPDATE users
 				SET money = money - $2
 				WHERE id = $1
 		`, userId, amount)
 		if err != nil {
 			return err
+		}
+
+		affected, err := results.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if affected != 1 {
+			return fmt.Errorf("Could not find user to allocate money from.")
 		}
 	} else {
 		stockAmount := int(amount/executionPrice)
@@ -330,13 +339,20 @@ func setTrigger(userId string, stockSymbol string, isBuy bool, executionPrice in
 			return fmt.Errorf("can not set trigger for 0 stocks\n")
 		}
 
-		_, err = tx.Exec(`
+		results, err := tx.Exec(`
 			UPDATE stocks
 				SET amount = amount - $3
 				WHERE user_id = $1 AND stock_sym = $2
 		`, userId, stockSymbol, stockAmount)
 		if err != nil {
 			return err
+		}
+		affected, err := results.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if affected != 1 {
+			return fmt.Errorf("Could not find stocks of %s owned by user", stockSymbol)
 		}
 	}
 
@@ -367,25 +383,19 @@ func cancelSet(userId string, stockSymbol string, isBuy bool) error {
 	defer tx.Rollback()
 	triggerId := getTriggerId(userId, stockSymbol, isBuy)
 
-	var t *trigger
-	mutex.Lock()
-	if isBuy {
-		if buyTriggers[triggerId] == nil { return fmt.Errorf("No trigger for userid/stocksymbol combination exists\n")}
-		t = buyTriggers[triggerId]
-	} else {
-		if sellTriggers[triggerId] == nil { return fmt.Errorf("No trigger for userid/stocksymbol combination exists\n")}
-		t = sellTriggers[triggerId]
-	}
-	mutex.Unlock()
+	fmt.Println("Cancelset id", triggerId, "is buy", isBuy)
 
 	row := tx.QueryRow(`
 		DELETE FROM triggers
 			WHERE id = $1
-			RETURNING (execution_price == NULL) as is_fully_set
+			RETURNING amount, execution_price
 	`, triggerId)
 
-	var isFullySet bool
-	err = row.Scan(&isFullySet)
+	var amount int
+	var executionPrice sql.NullInt64
+	err = row.Scan(&amount, &executionPrice)
+
+	fmt.Println("isfullyset ", executionPrice.Valid)
 
 	if err != nil {
 		return err
@@ -393,31 +403,36 @@ func cancelSet(userId string, stockSymbol string, isBuy bool) error {
 
 	var results sql.Result
 
-	if isFullySet {
+	if executionPrice.Valid {
 		if isBuy {
 			results, err = tx.Exec(`
 				UPDATE users
 					SET money = money + $2
 					WHERE id = $1
-			`, userId, t.amount)
+			`, userId, int(executionPrice.Int64))
 		} else {
 			results, err = tx.Exec(`
 				UPDATE stocks
 				SET amount = amount + $3
 				WHERE user_id = $1 AND stock_sym = $2
-			`, userId, stockSymbol, int(t.amount/t.executionPrice))
+			`, userId, stockSymbol, int(amount/int(executionPrice.Int64)))
 
 		}
-	}
-	rowsAffected, err := results.RowsAffected()
-	if err != nil {
-		return err
+		if err != nil {
+			return err
+		}
+		rowsAffected, err := results.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if rowsAffected != 1 {
+			return fmt.Errorf("Unexpected number of rows affected during trigger refund, got %d", rowsAffected)
+		}
+
+		fmt.Println("rows affected", rowsAffected)
 	}
 
-	if rowsAffected != 1 {
-		return fmt.Errorf("Unexpected number of rows affected during trigger refund")
-	}
-
+	fmt.Println("cancel commit")
 	tx.Commit()
 	mutex.Lock()
 	defer mutex.Unlock()

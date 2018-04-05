@@ -210,9 +210,16 @@ func GetQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	ctx := context.MakeContext(payload.TransactionNum, payload.UserId, payload.StockSymbol, logger.Quote)
-	quote.GetQuote(ctx)
-	w.WriteHeader(http.StatusCreated)	
-	io.WriteString(w, "Get Quote!\n")
+	price, err := quote.GetQuote(ctx)
+
+	if err != nil {
+		w.WriteHeader(400)
+		io.WriteString(w, err.Error())
+	} else {
+		w.WriteHeader(http.StatusOK)
+		io.WriteString(w, fmt.Sprintf("Price of %s: %d\n", payload.StockSymbol, int(price)))
+	}
+
 	// io.WriteString(w, money)
 }
 
@@ -633,6 +640,8 @@ func main() {
 	r.Path("/users/dump").Methods("POST").HandlerFunc(PostDumpLogHandler);
 	r.Path("/dump").Methods("POST").HandlerFunc(PostAdminDumpLogHandler);
 	r.Path("/users/{userId}/summary").Methods("POST").HandlerFunc(GetDisplaySummaryHandler);
+
+	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 
 	http.Handle("/", r)
 
